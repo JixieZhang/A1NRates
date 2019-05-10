@@ -19,7 +19,7 @@
 
 using namespace std;
 
-#define DEBUG  2
+#define DEBUG 3
 
 static const double deg = acos(0.0)/90.0;
 
@@ -37,7 +37,7 @@ double GetLumi10pow30(double current_na, int nuclei_per_molecule, double mol_mas
   Lumi = nuclei_per_molecule * ( I/q_e *N_A* T / mol_mass_gpermol ) /1.0e30;
 
   //L=3.759*1.0e33 * current_na*thickXdens_gpercm2/mol_mass_gpermol;
-  if(DEBUG>=5) cout<<"Luminosity="<<Lumi<<" X 1.0E+30 #/s/cm2"<<endl;
+  if(DEBUG>=6) cout<<"Luminosity="<<Lumi<<" X 1.0E+30 #/s/cm2"<<endl;
   return Lumi;
 }
 
@@ -55,7 +55,7 @@ double GetElasKin(double beam_gev, double theta_e_rad, double M_gev,
   ptot_p = sqrt(Pperp_p*Pperp_p+Pz_p*Pz_p);
   theta_p_rad = asin(Pperp_p/ptot_p);
 
-  if(DEBUG>=5) {
+  if(DEBUG>=6) {
     cout<< "Ei="<<Ei<< " Theta_e="<<t/deg<<" M="<<M<<"  ==>  Ef=" <<Ef
         <<"  P_p=" <<ptot_p<<"   Theta_p=" <<theta_p_rad/deg<<endl;
   }
@@ -73,16 +73,16 @@ double GetElasEprime(double beam_gev, double theta_e_rad, double M_gev)
 ////////////////////////////////////////////////////////////////////////////
 //get integrated xs for given element at given vertex z,
 //applying x and q2 cuts if their upper limits are larger than zero
-double GetInteXS(double pBeamE, double pAngle, double pMomentum, double Z, int N, double VZ, string Name,
+double GetInteXS(double pBeamE, double pAngle, double pMomentum, double Z, int N, double VZ, string Name, int ElasOnly=0,
                  double pXmin=-1.0, double pXmax=-1.0, double pQ2min=-1.0, double pQ2max=-1.0)
 {
   //for HMS
-  double pTheta_tg_max=0.06;
+  double pTheta_tg_max=0.07;
   double pTheta_tg_min=-0.06;
-  double pPhi_tg_max=0.06;
-  double pPhi_tg_min=-0.06;
-  double pEprime_max=pMomentum*1.09;
-  double pEprime_min=pMomentum*0.91;
+  double pPhi_tg_max=0.024;
+  double pPhi_tg_min=-0.024;
+  double pEprime_max=pMomentum*1.15;
+  double pEprime_min=pMomentum*0.88;
   //HMS entrance information, from https://github.com/JeffersonLab/mc-single-arm/blob/master/src/hms/mc_hms.f
   double pPivot2Entrance=126.2;      //cm
   double pH_entr_min=-4.575+0.000;   //cm
@@ -91,12 +91,12 @@ double GetInteXS(double pBeamE, double pAngle, double pMomentum, double Z, int N
   double pV_entr_max=12.144+0.028;   //cm
 
   if(Name=="SHMS") {
-    pTheta_tg_max=0.06;
-    pTheta_tg_min=-0.06;
-    pPhi_tg_max=0.06;
-    pPhi_tg_min=-0.06;
-    pEprime_max=pMomentum*1.09;
-    pEprime_min=pMomentum*0.91;
+    pTheta_tg_max=0.05;
+    pTheta_tg_min=-0.05;
+    pPhi_tg_max=0.04;
+    pPhi_tg_min=-0.04;
+    pEprime_max=pMomentum*1.39;
+    pEprime_min=pMomentum*0.79;
     //SHMS entrance, https://github.com/JeffersonLab/mc-single-arm/blob/master/src/shms/mc_shms.f
     pPivot2Entrance=258.0;    //cm
     pH_entr_min=-8.5+0.000;   //cm
@@ -118,8 +118,8 @@ double GetInteXS(double pBeamE, double pAngle, double pMomentum, double Z, int N
   double pTheta_max = pAngle + 20*deg;
   if(pTheta_min < 5*deg) pTheta_min = 5*deg;
   
-  double pPhi_min = -45 *deg ;
-  double pPhi_max =  45 *deg ;
+  double pPhi_min = -80 *deg ;
+  double pPhi_max =  80 *deg ;
 
   double dTheta = 0.2*deg;
   double dPhi = 0.2*deg;
@@ -154,7 +154,7 @@ double GetInteXS(double pBeamE, double pAngle, double pMomentum, double Z, int N
       double x_tr=0, y_tr=0, z_tr=0;
       Transform::X_HCS2TCS(0,0,VZ,pAngle,x_tr,y_tr,z_tr);
       Transform::Project(x_tr, y_tr, z_tr, pPivot2Entrance-z_tr,pTheta_tg,pPhi_tg,x_entr,y_entr,z_entr);
-      if(DEBUG>=4) cout<<" x_tr="<<x_tr<<"  y_tr="<<y_tr<<"  z_tr="<<z_tr<<"  theta_tr="<<pTheta_tg<<"  phi_tr="<<pPhi_tg<<endl;
+      if(DEBUG>=5) cout<<" x_tr="<<x_tr<<"  y_tr="<<y_tr<<"  z_tr="<<z_tr<<"  theta_tr="<<pTheta_tg<<"  phi_tr="<<pPhi_tg<<endl;
       if(x_entr<pV_entr_min || x_entr>pV_entr_max) continue;
       if(Name=="HMS" || Name=="SHMS") {
         if(y_entr<pH_entr_min || y_entr>pH_entr_max) continue;
@@ -187,17 +187,19 @@ double GetInteXS(double pBeamE, double pAngle, double pMomentum, double Z, int N
         if(pQ2max>0.0 && pQ2max>pQ2min) {
           if(pQ2<pQ2min || pQ2>pQ2max) continue;
         }
-        if(DEBUG>=3) cout<<" pTheta="<<pTheta/deg<<"  pPhi="<<pPhi/deg<<"  pEprime="<<pEprime<<endl;
+        if(DEBUG>=4) cout<<" pTheta="<<pTheta/deg<<"  pPhi="<<pPhi/deg<<"  pEprime="<<pEprime<<endl;
 
-        //please note that PBosted xs is for per nucleus
-        //double PBosted::GetXS(int Z, int N, double Ei, double Ef, double theta, double Tb=-0.001, double Ta=-0.001);
-        pXs=0.0;
-        //note that PBosted::GetXS() will not work for Q2>11, I give up these points
-        if(pQ2 < 11.0) pXs = PBosted::GetXS(Z, N, pBeamE, pEprime, pTheta, 0.000, 0.000);
-        pXs *= 1000.0;   //turn from ub/MeV/Sr into ub/GeV/Sr
-        if(DEBUG>=3) cout<<" Xbj = "<< pXbj<<"  Q2 = "<<pQ2<<"  PBosted::GetXS() = "<<pXs*1.0E3<<" (nb/GeV/Sr)"<<endl;
-        if(isnanf(pXs)) pXs=0.0;
-        pInteXs += pXs*deltaEprime*dOmega;
+        if(!ElasOnly) {
+          //please note that PBosted xs is for per nucleus
+          //double PBosted::GetXS(int Z, int N, double Ei, double Ef, double theta, double Tb=-0.001, double Ta=-0.001);
+          pXs=0.0;
+          //note that PBosted::GetXS() will not work for Q2>11, I give up these points
+          if(pQ2 < 11.0) pXs = PBosted::GetXS(Z, N, pBeamE, pEprime, pTheta, 0.000, 0.000);
+          if(isnanf(pXs)) pXs=0.0;
+          pXs *= 1000.0;   //turn from ub/MeV/Sr into ub/GeV/Sr
+          if(DEBUG>=4) cout<<" Xbj = "<< pXbj<<"  Q2 = "<<pQ2<<"  PBosted::GetXS() = "<<pXs*1.0E3<<" (nb/GeV/Sr)"<<endl;
+          pInteXs += pXs*deltaEprime*dOmega;
+        }
         
         //check if elastic events are accepted or not
         //please note that elas xs is for per nucleus
@@ -205,8 +207,9 @@ double GetInteXS(double pBeamE, double pAngle, double pMomentum, double Z, int N
           //double ElasModel::GetXS(int Z, int N, double Ei, double Theta, double Mtg_GeV=0.0, int iUseLarry=0);
           pXs_elas=0.0;
           pXs_elas = ElasModel::GetXS(Z,N,pBeamE,pTheta,pMtg);
-          pXs_elas *= 1.0;   //turn into ub/Sr
           if(isnanf(pXs_elas)) pXs_elas=0.0;
+          pXs_elas *= 1.0;   //turn into ub/Sr
+          if(DEBUG>=4) cout<<" pP_elas="<<pP_elas<<" deltaEprime="<<deltaEprime<<",  ElasModel::GetXS() = "<<pXs_elas*1.0E6<<" (pb/Sr)"<<endl;
           pInteXs += pXs_elas*dOmega;
         }
       }
@@ -218,8 +221,10 @@ double GetInteXS(double pBeamE, double pAngle, double pMomentum, double Z, int N
 
 ////////////////////////////////////////////////////////////////////////////
 //Beam Current in uA, All energies are in GeV unit. All angles are in radian unit.
-double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double pDetectorMomentum, string pDetectorName)
+double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double pDetectorMomentum, string pDetectorName, int pElasOnly=0)
 {
+  if(pElasOnly)  cout<<"\n===================pure elastic======================\n";
+  
   int pre = cout.precision();   //get the original precision of cout
   //define material 
 
@@ -297,8 +302,7 @@ double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double
   double L1Xbj[]={0.225, 0.275, 0.325, 0.375, 0.425, 0.475, 0.525, 0.575, 0.625, 0.675, 0.725, 0.775, 0.825};  // x boundary
   double L1Q2[]={2.0, 2.5, 3.0, 3.5, 4.0, 5.0, 6.0, 7.0};  //Q2 boundary
 
-  
-  
+
   cout.setf(ios_base::fixed); 
   cout.precision(4);
   cout<<setw(4)<<"Det"<<setw(8)<<"Target"
@@ -312,26 +316,30 @@ double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double
     pThickXDens=L1Dens[i]*L1Thick[i]; // (g/cm2);
     pLumi=GetLumi10pow30(pI_na,L1Nuclei_per_molecule[i],L1MolMass[i],pThickXDens);
 
-    if(i==10) {
-      int nTry = 20;
-      double pXS_he3 = 0, pXS_tot_he3 = 0;
-      for(int j=0;j<nTry;j++) {
-        double pVZ = -0.5*L1Thick[i] + (j+0.5)* (L1Thick[i]/nTry);
-        pXS_he3=GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], pVZ, pDetectorName);
-        if(DEBUG>=2) cout<<"  VZ = "<<setw(8)<<pVZ<<"  InteXS_he3 = "<<setw(8)<<pXS_he3*1.0E6<<" (pb)"<<endl;
-        pXS_tot_he3 += pXS_he3;
-      }
-      pInteXs=pXS_tot_he3/nTry;   //Need to get average, or change the luminosity
-      if(DEBUG>=2) cout<<"  Averaged  InteXS_he3 = "<<pInteXs*1.0E6<<" (pb)"<<endl;
-    } else {
-      pInteXs=GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], L1VZ[i], pDetectorName);
-      if(i==1 && pBeamE>8.0){
-        for(int ix=0;ix<12;ix++) {
-          double pInteXs_xq=GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], L1VZ[i], pDetectorName, L1Xbj[ix],L1Xbj[ix+1]);
-          double pRate_xq=pLumi*pInteXs_xq;
-          if(DEBUG>=2) cout<<"  x="<<(L1Xbj[ix]+L1Xbj[ix+1])/2.0<<"  pInteXs_xq = "<<setw(8)<<pInteXs_xq*1.0E6<<" (pb)  Rate="<<pRate_xq<<" (Hz)"<<endl;
+    //I do not want to do z slice for E=2.2 (elastic setting)
+    if(i==1 && pBeamE>8.0) {
+      //He3, calculate xs for each x-z bin
+      for(int ix=0;ix<12;ix++) {
+        
+        int nTry = 20;
+        double pXS_he3 = 0, pXS_tot_he3 = 0;
+        //for He3 target, calculate rate for each x bin
+        for(int iz=0;iz<nTry;iz++) {
+          double pVZ = -0.5*L1Thick[i] + (iz+0.5)* (L1Thick[i]/nTry);
+          pXS_he3=GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], pVZ, pDetectorName, pElasOnly, L1Xbj[ix],L1Xbj[ix+1]);
+          if(DEBUG>=3) cout<<"  x = "<<(L1Xbj[ix]+L1Xbj[ix+1])/2.0<<"  VZ = "<<setw(6)<<pVZ<<"  InteXS_he3 = "<<setw(8)<<pXS_he3*1.0E6<<" (pb)"<<endl;
+          pXS_tot_he3 += pXS_he3;
         }
+        pInteXs=pXS_tot_he3/nTry;   //Need to get average, or change the luminosity
+        if(DEBUG>=3) cout<<"  Averaged  InteXS_he3 = "<<pInteXs*1.0E6<<" (pb)"<<endl;
+        
+        double pInteXs_xq=pXS_tot_he3/nTry;
+        double pRate_xq=pLumi*pInteXs_xq;
+        if(DEBUG>=2) cout<<"  x="<<(L1Xbj[ix]+L1Xbj[ix+1])/2.0<<"  pInteXs_xq = "<<setw(8)<<pInteXs_xq*1.0E6<<" (pb)  Rate="<<pRate_xq<<" (Hz)"<<endl;
+  
       }
+    } else {
+      pInteXs=GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], L1VZ[i], pDetectorName, pElasOnly);
     }
     pInteRate=pLumi*pInteXs;
     
@@ -354,7 +362,7 @@ double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double
 ////////////////////////////////////////////////////////////////////////////
 void A1NRates()
 {
-  const double kBeamI[]={1.0,15.0,15.0,15.0,15.0};  //in uA
+  const double kBeamI[]={1.0,30.0,30.0,30.0,30.0};  //in uA
   const double kBeamE[]={2.2,10.5,10.5,10.5,10.5};
   const double kHMSAngle[]={12.5,12.5,12.5,30.0,30.0};
   const double kHMSP0[]={2.15,5.7,6.8,2.9,3.5};
@@ -363,15 +371,15 @@ void A1NRates()
   
   double pRateHMS=0.0,pRateSHMS=0.0;
   
-  for(int j=0;j<1;j++)
+  for(int j=0;j<5;j++)
   {
     //double GetRate(double pBeamE, double pDetectorAngle, double pDetectorMomentum, string pDetectorName)
-    pRateHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS");   
-  }
-  
-  for(int j=0;j<1;j++)
-  {
-    pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS");   
+    pRateHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",0);  
+    pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",0);   
+    if(j==0) {
+      pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"DHMS",1);
+      pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"SHMS",1);
+    }
   }
 }
 

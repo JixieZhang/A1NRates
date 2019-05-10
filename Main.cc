@@ -11,7 +11,7 @@
 using namespace std;
 
 extern double A1NRates();
-extern double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double pDetectorMomentum, string pDetectorName);
+extern double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double pDetectorMomentum, string pDetectorName, int pElasOnly=0);
 
 void usage(int argc, char** argv)
 {
