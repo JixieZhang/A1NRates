@@ -327,16 +327,16 @@ double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double
         for(int iz=0;iz<nTry;iz++) {
           double pVZ = -0.5*L1Thick[i] + (iz+0.5)* (L1Thick[i]/nTry);
           pXS_he3=GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], pVZ, pDetectorName, pElasOnly, L1Xbj[ix],L1Xbj[ix+1]);
-          if(DEBUG>=3) cout<<"  x = "<<(L1Xbj[ix]+L1Xbj[ix+1])/2.0<<"  VZ = "<<setw(6)<<pVZ<<"  InteXS_he3 = "<<setw(8)<<pXS_he3*1.0E6<<" (pb)"<<endl;
+          if(DEBUG>=3) cout<<"  x = "<<(L1Xbj[ix]+L1Xbj[ix+1])/2.0<<" +/- "<<(L1Xbj[ix+1]-L1Xbj[ix])/2.0<<"  VZ = "<<setw(6)<<pVZ<<"  InteXS_he3 = "<<setw(8)<<pXS_he3*1.0E6<<" (pb)"<<endl;
           pXS_tot_he3 += pXS_he3;
         }
-        pInteXs=pXS_tot_he3/nTry;   //Need to get average, or change the luminosity
-        if(DEBUG>=3) cout<<"  Averaged  InteXS_he3 = "<<pInteXs*1.0E6<<" (pb)"<<endl;
+        if(DEBUG>=3) cout<<"  Averaged  InteXS_he3 = "<<pXS_tot_he3/nTry*1.0E6<<" (pb)"<<endl;
         
-        double pInteXs_xq=pXS_tot_he3/nTry;
+        double pInteXs_xq=pXS_tot_he3/nTry;  //Need to get average, or change the luminosity during integration
         double pRate_xq=pLumi*pInteXs_xq;
-        if(DEBUG>=2) cout<<"  x="<<(L1Xbj[ix]+L1Xbj[ix+1])/2.0<<"  pInteXs_xq = "<<setw(8)<<pInteXs_xq*1.0E6<<" (pb)  Rate="<<pRate_xq<<" (Hz)"<<endl;
+        if(DEBUG>=2) cout<<"  x="<<(L1Xbj[ix]+L1Xbj[ix+1])/2.0<<" +/- "<<(L1Xbj[ix+1]-L1Xbj[ix])/2.0<<"  pInteXs_xq = "<<setw(8)<<pInteXs_xq*1.0E6<<" (pb)  Rate="<<pRate_xq<<" (Hz)"<<endl;
   
+        pInteXs += pInteXs_xq;  
       }
     } else {
       pInteXs=GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], L1VZ[i], pDetectorName, pElasOnly);
