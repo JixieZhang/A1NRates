@@ -19,7 +19,7 @@
 
 using namespace std;
 
-#define DEBUG 3
+#define DEBUG 2
 
 static const double deg = acos(0.0)/90.0;
 
@@ -77,12 +77,12 @@ double GetInteXS(double pBeamE, double pAngle, double pMomentum, double Z, int N
                  double pXmin=-1.0, double pXmax=-1.0, double pQ2min=-1.0, double pQ2max=-1.0)
 {
   //for HMS
-  double pTheta_tg_max=0.07;
-  double pTheta_tg_min=-0.06;
-  double pPhi_tg_max=0.024;
-  double pPhi_tg_min=-0.024;
-  double pEprime_max=pMomentum*1.15;
-  double pEprime_min=pMomentum*0.88;
+  double pTheta_tg_max=0.062;
+  double pTheta_tg_min=-0.054;
+  double pPhi_tg_max=0.02;  //0.024;
+  double pPhi_tg_min=-0.02; //-0.024;
+  double pEprime_max=pMomentum*1.13;
+  double pEprime_min=pMomentum*0.89;
   //HMS entrance information, from https://github.com/JeffersonLab/mc-single-arm/blob/master/src/hms/mc_hms.f
   double pPivot2Entrance=126.2;      //cm
   double pH_entr_min=-4.575+0.000;   //cm
@@ -91,12 +91,12 @@ double GetInteXS(double pBeamE, double pAngle, double pMomentum, double Z, int N
   double pV_entr_max=12.144+0.028;   //cm
 
   if(Name=="SHMS") {
-    pTheta_tg_max=0.05;
-    pTheta_tg_min=-0.05;
-    pPhi_tg_max=0.04;
-    pPhi_tg_min=-0.04;
-    pEprime_max=pMomentum*1.39;
-    pEprime_min=pMomentum*0.79;
+    pTheta_tg_max=0.036;
+    pTheta_tg_min=-0.047;
+    pPhi_tg_max=0.031;
+    pPhi_tg_min=-0.029;
+    pEprime_max=pMomentum*1.27;
+    pEprime_min=pMomentum*0.82;
     //SHMS entrance, https://github.com/JeffersonLab/mc-single-arm/blob/master/src/shms/mc_shms.f
     pPivot2Entrance=258.0;    //cm
     pH_entr_min=-8.5+0.000;   //cm
@@ -313,9 +313,11 @@ double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double
 
   for(int i=0;i<4;i++)
   {
+    cout.precision(3);
     pThickXDens=L1Dens[i]*L1Thick[i]; // (g/cm2);
     pLumi=GetLumi10pow30(pI_na,L1Nuclei_per_molecule[i],L1MolMass[i],pThickXDens);
 
+    pInteXs = 0.0;
     //I do not want to do z slice for E=2.2 (elastic setting)
     if(i==1 && pBeamE>8.0) {
       //He3, calculate xs for each x-z bin
