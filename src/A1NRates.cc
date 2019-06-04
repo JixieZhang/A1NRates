@@ -74,7 +74,7 @@ double GetElasEprime(double beam_gev, double theta_e_rad, double M_gev)
 //get integrated xs for given element at given vertex z,
 //applying x and q2 cuts if their upper limits are larger than zero
 double GetInteXS(double pBeamE, double pAngle, double pMomentum, double Z, int N, double VZ, string Name, int ElasOnly=0,
-                 double pXmin=-1.0, double pXmax=-1.0, double pQ2min=-1.0, double pQ2max=-1.0)
+                 double pXmin=-1.0, double pXmax=-1.0, double pQ2min=-1.0, double pQ2max=-1.0,double pWmin=1.1, double pWmax=1.35)
 {
   //for HMS
   double pTheta_tg_max=0.062;
@@ -112,7 +112,7 @@ double GetInteXS(double pBeamE, double pAngle, double pMomentum, double Z, int N
 
   double pTheta_tg,pPhi_tg=0;
   double pTheta=-999.,pPhi=-999.,pEprime=-999.;
-  double pXs_elas=0.0,pXs=0.0,pInteXs=0.0;
+  double pXs_elas=0.0,pXs=0.0,pXs_Delta=0.0,pInteXs=0.0;
 
   double pTheta_min = pAngle - 20*deg;
   double pTheta_max = pAngle + 20*deg;
@@ -179,6 +179,9 @@ double GetInteXS(double pBeamE, double pAngle, double pMomentum, double Z, int N
         
         double pQ2=2.0*pBeamE*pEprime*(1.0-cos(pTheta));
         double pXbj=pQ2/(2.0*0.9383*(pBeamE-pEprime));
+        double M_p=0.9383;
+        double nu=pBeamE-pEprime;
+        double pW=sqrt(pow(M_p,2.0)+2*M_p*nu-pQ2);
         //applying X cuts
         if(pXmax>0.0 && pXmax>pXmin) {
           if(pXbj<pXmin || pXbj>pXmax) continue;
@@ -188,8 +191,7 @@ double GetInteXS(double pBeamE, double pAngle, double pMomentum, double Z, int N
           if(pQ2<pQ2min || pQ2>pQ2max) continue;
         }
         if(DEBUG>=4) cout<<" pTheta="<<pTheta/deg<<"  pPhi="<<pPhi/deg<<"  pEprime="<<pEprime<<endl;
-
-        if(!ElasOnly) {
+        if(ElasOnly==0) {
           //please note that PBosted xs is for per nucleus
           //double PBosted::GetXS(int Z, int N, double Ei, double Ef, double theta, double Tb=-0.001, double Ta=-0.001);
           pXs=0.0;
@@ -200,7 +202,18 @@ double GetInteXS(double pBeamE, double pAngle, double pMomentum, double Z, int N
           if(DEBUG>=4) cout<<" Xbj = "<< pXbj<<"  Q2 = "<<pQ2<<"  PBosted::GetXS() = "<<pXs*1.0E3<<" (nb/GeV/Sr)"<<endl;
           pInteXs += pXs*deltaEprime*dOmega;
         }
-        
+        //Delta transverse Asymmetry: W cut for 3He Delta resonance peak
+        if(ElasOnly==2){
+		//applying W cuts
+        if(pWmax>0.0 && pWmax>pWmin) {
+          if(pW<pWmin || pW>pWmax) continue;//continue for jump the rest of the commands
+        }	
+		pXs_Delta=0.0;
+        if(pQ2 < 11.0) pXs_Delta = PBosted::GetXS(Z, N, pBeamE, pEprime, pTheta, 0.000, 0.000);
+        if(isnanf(pXs_Delta)) pXs_Delta =0.0;
+        pXs_Delta*= 1000.0;   //turn from ub/MeV/Sr into ub/GeV/Sr	
+        pInteXs += pXs_Delta*deltaEprime*dOmega;		
+		}
         //check if elastic events are accepted or not
         //please note that elas xs is for per nucleus
         if(fabs(pP_elas-pEprime)<0.5*deltaEprime) {
@@ -223,8 +236,8 @@ double GetInteXS(double pBeamE, double pAngle, double pMomentum, double Z, int N
 //Beam Current in uA, All energies are in GeV unit. All angles are in radian unit.
 double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double pDetectorMomentum, string pDetectorName, int pElasOnly=0)
 {
-  if(pElasOnly)  cout<<"\n===================pure elastic======================\n";
-  
+  if(pElasOnly==1)  cout<<"\n===================pure elastic======================\n";
+  if(pElasOnly==2)  cout<<"\n===================Delta Transverse Asymmetry======================\n";
   int pre = cout.precision();   //get the original precision of cout
   //define material 
 
@@ -249,9 +262,12 @@ double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double
   double MolMass_pr=1.00794;    //in g/mol
   double MolMass_he3=3.01603;   //in g/mol
   double MolMass_c12=12.01078;  //in g/mol
+  double MolMass_N14=14.0067;   //in g/mol
   //double MolMass_ta=180.94788;  //in g/mol
   
   double Dpr=0.07085;  // g/cm3;  //LH2 density 70.85 g/L
+  //double DH2=8.349E-4;         // g/cm3; H2 gas density at 21.1°C (70°F) 10atm;
+  //double DN2=0.0116;         // g/cm3; H2 gas density at 21.1°C (70°F) 10atm;
   double Dc12=2.267;   // g/cm3;
   double Dhe3=0.00178; // g/cm3;  //Density at 21.1°C (70°F) : 0.1650 kg/m3
   //double Dta=16.69;   // g/cm3;
@@ -261,6 +277,34 @@ double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double
   double Dhe3_10amg = Dhe3_274p15K * 10.0; //density at 10 amagats, 
   Dhe3 = Dhe3_10amg;  //does not depends on temperature any more since the volumn is sealed up
   if(DEBUG>=1) cout<<"  density_he3_@_10amg="<<Dhe3<<" g/cm^3"<<endl;
+  
+  //Reference cell pressure curve for elastic (P_bP_t) kinematics
+  double R_const=82.057; //calculate gas density from ideal gas law, R=82.057 cm^3*atm*k^(-1)*mol^(-1)
+  double Temp=21.1+273.15;//Density at 21.1°C 
+  double P_3He[]={2.0,4.0,6.0,8.0,10.0};//pressure for different gas in reference cell
+  double P_H2[]={2.0,4.0,6.0,8.0,10.0};
+  double P_N2[]={2.0,4.0,6.0,8.0,10.0};
+  
+  int L_3He=sizeof(P_3He)/sizeof(double);//obtain the length of 1D pressure array
+  int L_H2=sizeof(P_H2)/sizeof(double);
+  int L_N2=sizeof(P_N2)/sizeof(double);
+  double D_3He[5]={};
+  double D_H2[5]={};
+  double D_N2[5]={};
+  for(int ii=0;ii<L_3He;ii++)
+  {D_3He[ii]=P_3He[ii]*MolMass_he3/(Temp*R_const);//get density in g/cm3
+  }
+  for(int jj=0;jj<L_H2;jj++)
+  {D_H2[jj]=P_H2[jj]*MolMass_pr*2.0/(Temp*R_const);
+  }
+  for(int kk=0;kk<L_N2;kk++)
+  {D_N2[kk]=P_N2[kk]*MolMass_N14*2.0/(Temp*R_const);
+  }
+  // End of Reference cell pressure curve for elastic (P_bP_t) kinematics
+  
+  double DH2=D_H2[4];         // g/cm3; H2 gas density at 21.1°C (70°F) 10atm;
+  double DN2=D_N2[4];        // g/cm3; N2 gas density at 21.1°C (70°F) 10atm; 
+  double D3He=D_3He[4];     // g/cm3; 3He gas density at 21.1°C (70°F) 10atm; 
   
   double MolMass_SiO2=(28.0856*1+15.9994*2);  //in g/mol   
   double MolMass_BaO =(137.327*1+15.9994*1);  //in g/mol
@@ -282,6 +326,17 @@ double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double
   double Dge180 = 2.77;  // g/cm3;
   if(DEBUG>=1) cout<<"  pZ_aver_ge180="<<pZ_aver_ge180<<"    pMolMass_aver_ge180="<<pMolMass_aver_ge180<<endl;
 
+  //GE180 glass composition Xsection for elastic (P_bP_t) kinematics
+  const char * GE180Name[]={"O","Si","Ba","Al","Ca","Sr","H"};//O=0;Si=1;Ba=2;Al=3;Ca=4;Sr=5;H=6
+  double GE180Z[]={8.0,14.0,56.0,13.0,20.0,38.0,1.0};
+  double GE180N[]={8.0,14.0,82.0,14.0,20.0,50.0,0.0};
+  
+  const char * Ge180_MName[]={"SiO2","BaO","Al2O3","CaO","SrO","H"};
+  double Ge180_MW[]={pMolMass_aver_ge180*0.603/MolMass_SiO2,pMolMass_aver_ge180*0.182/MolMass_BaO,pMolMass_aver_ge180*0.143/MolMass_Al2O3,pMolMass_aver_ge180*0.065/MolMass_CaO,pMolMass_aver_ge180*0.0025/MolMass_SrO,pMolMass_aver_ge180*0.0045/MolMass_pr};//weight composition
+  int L_GE180=sizeof(Ge180_MW)/sizeof(double);//obtain the length of 1D pressure array
+  double pIntXs_GE180, pIntXs_O;
+  //End of GE180 glass composition Xsection for elastic (P_bP_t) kinematics
+  
   double pI_na=pBeamCurrent*1000.0;
   double pThickXDens;// in g/cm2
   double pLumi=0, pInteXs, pInteRate;
@@ -289,14 +344,14 @@ double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double
   cout<<"\nBeam current = "<<pBeamCurrent<<" uA,  Detector = "<<pDetectorName<<",  Angle = "<<pDetectorAngle/deg<<" deg"<<endl;
 
   //Loop1, 
-  const char *L1Name[]={"C12","He3","GE-180","GE-180","LH2"};
-  double L1Z[]={6., 2., double(pZ_aver_ge180), double(pZ_aver_ge180), 1.0};  //number of protons in one atom
-  double L1N[]={6., 1., double(pN_aver_ge180), double(pN_aver_ge180), 0.0};  //number of neutrons in one atom
-  int L1Nuclei_per_molecule[]={1, 1, 1, 1, 2};  //number of atoms per molecule, use 1 for all compounds, n for Hn, Dn
-  double L1Dens[]={Dc12, Dhe3, Dge180, Dge180, Dpr};  //g/cm3
-  double L1MolMass[]={MolMass_c12, MolMass_he3, pMolMass_aver_ge180, pMolMass_aver_ge180, MolMass_pr*2};  //g
-  double L1Thick[]={0.254, 40.0, 0.014, 0.014, 5.0}; //cm
-  double L1VZ[]={0.0, 0.0, -20.0, 20.0, 0.0};  // vertex location in cm
+  const char *L1Name[]={"C12","He3","GE-180","GE-180","H2","N2","He3"};
+  double L1Z[]={6., 2., double(pZ_aver_ge180), double(pZ_aver_ge180), 1.0,7.0,2.0};  //number of protons in one atom
+  double L1N[]={6., 1., double(pN_aver_ge180), double(pN_aver_ge180), 0.0,7.0,1.0};  //number of neutrons in one atom
+  int L1Nuclei_per_molecule[]={1, 1, 1, 1, 2,2,1};  //number of atoms per molecule, use 1 for all compounds, n for Hn, Dn
+  double L1Dens[]={Dc12, Dhe3, Dge180, Dge180, DH2,DN2,D3He};  //g/cm3
+  double L1MolMass[]={MolMass_c12, MolMass_he3, pMolMass_aver_ge180, pMolMass_aver_ge180, MolMass_pr*2,MolMass_N14*2, MolMass_he3};  //g
+  double L1Thick[]={0.254, 40.0, 0.014, 0.014, 40.0,40.0,40.0}; //cm
+  double L1VZ[]={0.0, 0.0, -20.0, 20.0, 0.0,0.0,0.0};  // vertex location in cm
 
   //x an Q2 binning
   double L1Xbj[]={0.225, 0.275, 0.325, 0.375, 0.425, 0.475, 0.525, 0.575, 0.625, 0.675, 0.725, 0.775, 0.825};  // x boundary
@@ -311,7 +366,7 @@ double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double
       <<setw(12)<<"Lumi(10^33)"<<setw(12)<<"InteXS(pb)"<<setw(12)<<"Rate(Hz)"
       <<endl;
 
-  for(int i=0;i<4;i++)
+  for(int i=0;i<7;i++)
   {
     cout.precision(3);
     pThickXDens=L1Dens[i]*L1Thick[i]; // (g/cm2);
@@ -352,6 +407,98 @@ double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double
         <<setw(10)<<setprecision(3)<<L1Thick[i]
         <<setprecision(2)<<setw(12)<<pLumi/1000.<<setw(12)<<pInteXs*1.0E6<<setw(12)<<pInteRate
         <<endl;
+    if(i==1 && pDetectorMomentum>2.0 && pDetectorMomentum<2.1) {// Elastic (P_bP_t) pressure curve
+	     for(int iden=0;iden<L_3He;iden++) {
+                 cout.precision(3);
+		 pThickXDens=D_3He[iden]*L1Thick[i]; // (g/cm2);
+                 pLumi=GetLumi10pow30(pI_na,L1Nuclei_per_molecule[i],L1MolMass[i],pThickXDens); 
+		 pInteRate=pLumi*pInteXs;
+		 cout<<"  ["<<L1Name[i]<<"] Pressure ="<<setw(6)<<P_3He[iden]<<" (atm)"<<" Density="<<setw(8)<<D_3He[iden]*1000.0<<" (mg/cm3)"<<" Lumi="<<setw(8)<<pLumi/1000.<<" (10^33)"<<" pInteXs="<<setw(8)<<pInteXs*1.0E6<<" (pb)"<<" Rate="<<setw(8)<<pInteRate<<" (Hz)"<<endl;}	
+	}
+    else if(i==4 && pDetectorMomentum>2.0 && pDetectorMomentum<2.1) {// Elastic (P_bP_t) pressure curve
+	     for(int jden=0;jden<L_H2;jden++) {
+		 cout.precision(3);
+                 pThickXDens=D_H2[jden]*L1Thick[i]; // (g/cm2);
+                 pLumi=GetLumi10pow30(pI_na,L1Nuclei_per_molecule[i],L1MolMass[i],pThickXDens); 
+		 pInteRate=pLumi*pInteXs;
+		 cout<<"  ["<<L1Name[i]<<"] Pressure ="<<setw(6)<<P_H2[jden]<<" (atm)"<<" Density="<<setw(8)<<D_H2[jden]*1000.0<<" (mg/cm3)"<<" Lumi="<<setw(8)<<pLumi/1000.<<" (10^33)"<<" pInteXs="<<setw(8)<<pInteXs*1.0E6<<" (pb)"<<" Rate="<<setw(8)<<pInteRate<<" (Hz)"<<endl;}	
+	}
+    else if(i==5 && pDetectorMomentum>2.0 && pDetectorMomentum<2.1) {// Elastic (P_bP_t) pressure curve
+	     for(int kden=0;kden<L_N2;kden++) {
+		 cout.precision(3);
+                 pThickXDens=D_N2[kden]*L1Thick[i]; // (g/cm2);
+                 pLumi=GetLumi10pow30(pI_na,L1Nuclei_per_molecule[i],L1MolMass[i],pThickXDens); 
+		 pInteRate=pLumi*pInteXs;
+		 cout<<"  ["<<L1Name[i]<<"] Pressure ="<<setw(6)<<P_N2[kden]<<" (atm)"<<" Density="<<setw(8)<<D_N2[kden]*1000.0<<" (mg/cm3)"<<" Lumi="<<setw(8)<<pLumi/1000.<<" (10^33)"<<" pInteXs="<<setw(8)<<pInteXs*1.0E6<<" (pb)"<<" Rate="<<setw(8)<<pInteRate<<" (Hz)"<<endl;}	
+	} 	 	        
+   else if(i==2 && pDetectorMomentum>2.0 && pDetectorMomentum<2.1) {// GE180 upstream for Elastic (P_bP_t)
+	    cout.precision(3);
+	    pIntXs_GE180=0.0;
+	    pIntXs_O=GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, GE180Z[0], GE180N[0], L1VZ[i], pDetectorName, pElasOnly);
+	    //IntXs for [SiO2]
+	    pIntXs_GE180+=Ge180_MW[0]*1.0*GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, GE180Z[1], GE180N[1], L1VZ[i], pDetectorName, pElasOnly);//Si
+	    pIntXs_GE180+=Ge180_MW[0]*2.0*pIntXs_O;//O2
+	    //IntXs for [BaO]
+	    pIntXs_GE180+=Ge180_MW[1]*1.0*GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, GE180Z[2], GE180N[2], L1VZ[i], pDetectorName, pElasOnly);//Ba
+	    pIntXs_GE180+=Ge180_MW[1]*1.0*pIntXs_O;//O
+	    //IntXs for [Al2O3]
+	    pIntXs_GE180+=Ge180_MW[2]*2.0*GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, GE180Z[3], GE180N[3], L1VZ[i], pDetectorName, pElasOnly);//Al2
+	    pIntXs_GE180+=Ge180_MW[2]*3.0*pIntXs_O;//O3
+	    //IntXs for [CaO]
+	    pIntXs_GE180+=Ge180_MW[3]*1.0*GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, GE180Z[4], GE180N[4], L1VZ[i], pDetectorName, pElasOnly);//Ca
+	    pIntXs_GE180+=Ge180_MW[3]*1.0*pIntXs_O;//O
+	    //IntXs for [SrO]
+	    pIntXs_GE180+=Ge180_MW[4]*1.0*GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, GE180Z[5], GE180N[5], L1VZ[i], pDetectorName, pElasOnly);//Sr
+	    pIntXs_GE180+=Ge180_MW[4]*1.0*pIntXs_O;//O
+	    //IntXs for [H]
+	    pIntXs_GE180+=Ge180_MW[5]*1.0*GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, GE180Z[6], GE180N[6], L1VZ[i], pDetectorName, pElasOnly);//H
+	    //Get total rate for pIntXs_GE180=sigma_material*weight_composition.
+	    pLumi=GetLumi10pow30(pI_na,L1Nuclei_per_molecule[i],L1MolMass[i],pThickXDens);//Lumi for GE180 glass 
+	    pInteRate=pLumi*pIntXs_GE180;
+	    cout<<"[GE180 Upstream] "<<endl;
+	    cout<<setw(4)<<pDetectorName<<setw(8)<<L1Name[i]
+        <<setprecision(4)<<setw(10)<<pBeamE
+        <<setw(10)<<setprecision(2)<<pBeamCurrent<<setw(10)<<pDetectorMomentum
+        <<setprecision(2)<<setw(10)<<pDetectorAngle/deg<<setw(10)<<L1VZ[i]
+        <<setw(10)<<setprecision(3)<<L1Thick[i]
+        <<setprecision(2)<<setw(12)<<pLumi/1000.<<setw(12)<<pIntXs_GE180*1.0E6<<setw(12)<<pInteRate
+        <<endl;
+        cout<<"[End of GE180 Upstream] "<<endl;
+	}
+	   else if(i==3 && pDetectorMomentum>2.0 && pDetectorMomentum<2.1) {// GE180 downstream for Elastic (P_bP_t)
+	    cout.precision(3);
+	    pIntXs_GE180=0.0;
+	    pIntXs_O=GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, GE180Z[0], GE180N[0], L1VZ[i], pDetectorName, pElasOnly);
+	    //IntXs for [SiO2]
+	    pIntXs_GE180+=Ge180_MW[0]*1.0*GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, GE180Z[1], GE180N[1], L1VZ[i], pDetectorName, pElasOnly);//Si
+	    pIntXs_GE180+=Ge180_MW[0]*2.0*pIntXs_O;//O2
+	    //IntXs for [BaO]
+	    pIntXs_GE180+=Ge180_MW[1]*1.0*GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, GE180Z[2], GE180N[2], L1VZ[i], pDetectorName, pElasOnly);//Ba
+	    pIntXs_GE180+=Ge180_MW[1]*1.0*pIntXs_O;//O
+	    //IntXs for [Al2O3]
+	    pIntXs_GE180+=Ge180_MW[2]*2.0*GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, GE180Z[3], GE180N[3], L1VZ[i], pDetectorName, pElasOnly);//Al2
+	    pIntXs_GE180+=Ge180_MW[2]*3.0*pIntXs_O;//O3
+	    //IntXs for [CaO]
+	    pIntXs_GE180+=Ge180_MW[3]*1.0*GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, GE180Z[4], GE180N[4], L1VZ[i], pDetectorName, pElasOnly);//Ca
+	    pIntXs_GE180+=Ge180_MW[3]*1.0*pIntXs_O;//O
+	    //IntXs for [SrO]
+	    pIntXs_GE180+=Ge180_MW[4]*1.0*GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, GE180Z[5], GE180N[5], L1VZ[i], pDetectorName, pElasOnly);//Sr
+	    pIntXs_GE180+=Ge180_MW[4]*1.0*pIntXs_O;//O
+	    //IntXs for [H]
+	    pIntXs_GE180+=Ge180_MW[5]*1.0*GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, GE180Z[6], GE180N[6], L1VZ[i], pDetectorName, pElasOnly);//H
+	    //Get total rate for pIntXs_GE180=sigma_material*weight_composition.
+	    pLumi=GetLumi10pow30(pI_na,L1Nuclei_per_molecule[i],L1MolMass[i],pThickXDens);//Lumi for GE180 glass 
+	    pInteRate=pLumi*pIntXs_GE180;
+	    cout<<"[GE180 Downstream] "<<endl;
+	    cout<<setw(4)<<pDetectorName<<setw(8)<<L1Name[i]
+        <<setprecision(4)<<setw(10)<<pBeamE
+        <<setw(10)<<setprecision(2)<<pBeamCurrent<<setw(10)<<pDetectorMomentum
+        <<setprecision(2)<<setw(10)<<pDetectorAngle/deg<<setw(10)<<L1VZ[i]
+        <<setw(10)<<setprecision(3)<<L1Thick[i]
+        <<setprecision(2)<<setw(12)<<pLumi/1000.<<setw(12)<<pIntXs_GE180*1.0E6<<setw(12)<<pInteRate
+        <<endl;
+        cout<<"[End of GE180 Downstream] "<<endl;
+	}  	 	
   }   
   cout<<endl;
   cout.precision(pre);    //recover cout default precision
@@ -364,23 +511,27 @@ double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double
 ////////////////////////////////////////////////////////////////////////////
 void A1NRates()
 {
-  const double kBeamI[]={1.0,30.0,30.0,30.0,30.0};  //in uA
-  const double kBeamE[]={2.2,10.5,10.5,10.5,10.5};
-  const double kHMSAngle[]={12.5,12.5,12.5,30.0,30.0};
-  const double kHMSP0[]={2.15,5.7,6.8,2.9,3.5};
-  const double kSHMSAngle[]={12.5,12.5,12.5,30.0,30.0};
-  const double kSHMSP0[]={2.15,5.8,7.5,2.4,3.4};
+  const double kBeamI[]={1.0,1.0,30.0,30.0,30.0,30.0};  //in uA
+  const double kBeamE[]={2.1,2.1,10.5,10.5,10.5,10.5};
+  const double kHMSAngle[]={11.7,11.7,12.5,12.5,30.0,30.0};
+  const double kHMSP0[]={2.0679,1.6821,5.7,6.8,2.9,3.5};
+  const double kSHMSAngle[]={8.5,8.5,12.5,12.5,30.0,30.0};
+  const double kSHMSP0[]={2.0829,1.7181,5.8,7.5,2.4,3.4};
   
   double pRateHMS=0.0,pRateSHMS=0.0;
   
-  for(int j=0;j<5;j++)
+  for(int j=0;j<6;j++)
   {
     //double GetRate(double pBeamE, double pDetectorAngle, double pDetectorMomentum, string pDetectorName)
     pRateHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",0);  
     pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",0);   
     if(j==0) {
-      pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"DHMS",1);
-      pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"SHMS",1);
+      pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",1);
+      pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",1);
+    }
+    if(j==1) {
+      pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",2);
+      pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",2);
     }
   }
 }
