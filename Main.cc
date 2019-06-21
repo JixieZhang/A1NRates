@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <math.h>
 #include <time.h>
+#include <string>
 
 //#define RATES_DEBUG 1
 
@@ -27,14 +28,14 @@ int _main(int argc, char** argv)
     usage(argc,argv);
     exit(-1);
   }
-  const double degree = acos(0.0)/180.0;
+  const double degree = asin(1.0)/90.0;
   double pBeamCurrent, pBeamE, pDetectorAngle, pDetectorMomentum;
   string pDetectorName;
 
-  pBeamCurrent = atol(argv[1]); 
-  pBeamE = atol(argv[2]); 
-  pDetectorAngle = atol(argv[3])*degree; 
-  pDetectorMomentum = atol(argv[4]); 
+  pBeamCurrent = atof(argv[1]); 
+  pBeamE = atof(argv[2]); 
+  pDetectorAngle = atof(argv[3])*degree; 
+  pDetectorMomentum = atof(argv[4]); 
   pDetectorName = argv[5];
 
   GetRate(pBeamCurrent, pBeamE, pDetectorAngle, pDetectorMomentum, pDetectorName);
