@@ -351,7 +351,7 @@ double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double
   double Z_ge180 = MolMass_ge180 * 0.4829;
   int N_ge180 = lround(MolMass_ge180-Z_ge180);  //round up to nearest int
   Z_ge180 = MolMass_ge180 - N_ge180;
-  
+
   if(DEBUG>=1) cout<<"  Z_ge180="<<Z_ge180<<"  N_ge180="<<N_ge180<<"    MolMass_ge180="<<MolMass_ge180<<endl;
   
   //double DH2=8.349E-4; // g/cm3; H2 gas density at 21.1°C (70°F) 10atm; this is correct
@@ -532,5 +532,3 @@ double Q2 = 4*E0*Ep*sin2th;
 double W2 =-Q2+M*M+2*M*(E0-Ep);
 cout<<" E0="<<E0<<",  E'="<<Ep<<"  ==> W="<<sqrt(W2)<<"\n";
 */
-
-
