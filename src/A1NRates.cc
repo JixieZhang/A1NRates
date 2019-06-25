@@ -171,7 +171,7 @@ double GetXS_GE180(float Ei, float Ef, float Theta, float Tb, float Ta, int Elas
 //get integrated xs for given element at given vertex z,
 //applying x and q2 cuts if their upper limits are larger than zero
 double GetInteXS(double pBeamE, double pAngle, double pMomentum, double Z, int N, double VZ, string Name, int ElasOnly=0,
-                 double pXmin=-1.0, double pXmax=-1.0, double pQ2min=-1.0, double pQ2max=-1.0,double pWmin=1.1, double pWmax=1.35)
+                 double pXmin=-1.0, double pXmax=-1.0, double pQ2min=-1.0, double pQ2max=-1.0,double pWmin=1.1, double pWmax=1.35, double pW2_cut=4.0)
 {
   int pre = cout.precision();   //get the original precision of cout
   cout.precision(4);
@@ -200,7 +200,7 @@ double GetInteXS(double pBeamE, double pAngle, double pMomentum, double Z, int N
 
   double pTheta_tg,pPhi_tg=0;
   double pTheta=-999.,pPhi=-999.,pEprime=-999.;
-  double pXs_elas=0.0,pXs=0.0,pXs_Delta=0.0,pInteXs=0.0;
+  double pXs_elas=0.0,pXs=0.0,pXs_Delta=0.0, pXs_DIS=0.0,pXs_Res=0.0,pInteXs=0.0;
 
   double pTheta_min = pAngle - 20*deg;
   double pTheta_max = pAngle + 20*deg;
@@ -209,12 +209,12 @@ double GetInteXS(double pBeamE, double pAngle, double pMomentum, double Z, int N
   double pPhi_min = -80 *deg ;
   double pPhi_max =  80 *deg ;
 
-  double dTheta = 0.2*deg;
-  double dPhi = 0.2*deg;
-  double dEprime = 0.002;
-  //double dTheta = 0.5*deg;
-  //double dPhi = 0.5*deg;
-  //double dEprime = 0.02;
+  //double dTheta = 0.2*deg;
+  //double dPhi = 0.2*deg;
+  //double dEprime = 0.002;
+  double dTheta = 0.5*deg;
+  double dPhi = 0.5*deg;
+  double dEprime = 0.02;
   
   double x_tg,y_tg,z_tg=0;
 
@@ -312,6 +312,26 @@ double GetInteXS(double pBeamE, double pAngle, double pMomentum, double Z, int N
           pInteXs += pXs_Delta*deltaEprime*dOmega*pAcc;
         }
         
+        //DIS W^2 cut: W^2>=4 GeV^2
+        if(ElasOnly==4){
+          //applying W cuts
+          if(pW2_cut>0.0) {
+            if(pow(pW,2.0)<pW2_cut) continue;//continue for jump the rest of the commands
+          }
+          pXs_DIS = 0.0;
+          if(pQ2 < 11.0) pXs_DIS = GetXS(Z, N, pBeamE, pEprime, pTheta, 0.000, 0.000, 0);
+          pInteXs += pXs_DIS*deltaEprime*dOmega*pAcc;
+        }
+        //Resonance W^2 cut: W^2<4 GeV^2
+        if(ElasOnly==5){
+          //applying W cuts
+          if(pW2_cut>0.0) {
+            if(pow(pW,2.0)>=pW2_cut) continue;//continue for jump the rest of the commands
+          }
+          pXs_Res = 0.0;
+          if(pQ2 < 11.0) pXs_Res = GetXS(Z, N, pBeamE, pEprime, pTheta, 0.000, 0.000, 0);
+          pInteXs += pXs_Res*deltaEprime*dOmega*pAcc;
+        }       
         //check if elastic events are accepted or not, add only once per dOmega
         //please note that elas xs is for per nucleus
         if(fabs(pP_elas-pEprime)<0.51*deltaEprime) {
@@ -337,6 +357,8 @@ double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double
   if(pElasOnly==1)  cout<<"\n===================Pure elastic =========================\n";
   if(pElasOnly==2)  cout<<"\n===================Delta Transverse Asymmetry============\n";
   if(pElasOnly==3)  cout<<"\n===================Only 2 SC bars are turned on==========\n";
+  if(pElasOnly==4)  cout<<"\n===================DIS W2 Cut============================\n";
+  if(pElasOnly==5)  cout<<"\n===================Resonance W2 Cut======================\n";
   int pre = cout.precision();   //get the original precision of cout
   //define material 
 
@@ -358,6 +380,8 @@ double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double
   //double DN2=0.0116;   // g/cm3; N2 gas density at 21.1°C (70°F) 10atm;
   double Dc12=2.267;     // g/cm3;
   double Dhe3=1.249E-3;  // g/cm3;  //Density at 21.1°C (70°F) (not necessary correct)
+  double amagat=4.4614981E-5;//number density of one amagat [mol/cm3]
+  Dhe3 =12*amagat*MolMass_he3;//density of 10 amg in [g/cm3]
   double Dge180 = 2.77;  // g/cm3;
 
   //comput density using ideal gas law
@@ -497,16 +521,24 @@ void A1NRates()
     pRateHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",0);  
     pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",0);   
     if(j==0) {
-      pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",1);
+      pRateHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",1);
       pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",1);
       
-      pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",3);
+      pRateHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",3);
       pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",3);
     }
     if(j==1) {
-      pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",2);
+      pRateHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",2);
       pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",2);
     }
+    if(j==3) {
+      pRateHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",4);
+      pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",5);
+    }
+    if(j==2||j>3) {
+      pRateHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",4);
+      pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",4);
+    }    
   }
 }
 
