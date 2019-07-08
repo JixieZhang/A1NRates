@@ -182,7 +182,7 @@ double GetXS_GE180(float Ei, float Ef, float Theta, float Tb, float Ta, int Elas
 ////////////////////////////////////////////////////////////////////////////
 //old version is binned in Theta-Phi-P, new version is binned in CosTheta-Phi-P
 //get integrated xs for given element at given vertex z,
-//applying x and q2 cuts if their upper limits are larger than zero
+//applying x, q2 and w cuts if their upper limits are larger than zero
 //ElasOnly=-1: pure inelastic for full acceptance
 //ElasOnly=0:  inelastic + elastic for full acceptance
 //ElasOnly=1:  pure elastic for full acceptance

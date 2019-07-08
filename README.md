@@ -16,3 +16,29 @@ First release version v1.0.0.
 1. Hard-coded HMS and SHMS collimator size and angle acceptance, need to be improved.
 2. Hard-coded target material, it will be better to separate them.
 
+
+20190708
+1. Changed GetInteXS() to bin in CosTheta. Optimized HMS and SHMS collimator size and angle
+   acceptance to match method 2.
+2. Changed GetInteXS():
+//old version is binned in Theta-Phi-P, new version is binned in CosTheta-Phi-P
+//get integrated xs for given element at given vertex z,
+//applying x, q2 and w cuts if their upper limits are larger than zero
+//ElasOnly=-1: pure inelastic for full acceptance
+//ElasOnly=0:  inelastic + elastic for full acceptance
+//ElasOnly=1:  pure elastic for full acceptance
+//ElasOnly=-30: pure inelastic for 2-SC-Bar acceptance
+//ElasOnly=30: inelastic + elastic for 2-SC-Bar acceptance
+//ElasOnly=31: pure elastic for 2-SC-Bar acceptance
+//double GetInteXS(double pBeamE, double pAngle, double pMomentum, double Z, int N, double VZ, string Name, int ElasOnly=0,
+//                 double pXmin=-1.0, double pXmax=-1.0, double pQ2min=-1.0, double pQ2max=-1.0,double pWmin=-1.0, double pWmax=-1.0)
+
+   A) W cut is no longer identified by ElasOnly flag.  User will provide Wmin and Wmax. By default
+   Wmin=Wmax=-1.0.  W cut will be applied only if Wmax>=0;
+   B) Added more ElasOnly flags. If ElasOnly<0, will do inelastic xs only. Use ElasOnly=-30,30,31 for 2-SC-Bar acceptance calculation.
+   Use ElasOnly=-1,0,1 for full acceptance calculation.    
+3. Changed GetRate():
+   A) Only 40cm 3He target will do X bin calculation.
+   B) If (ElasOnly < 0), only do inelastic calculation for H2, N2 and 3He target.
+   C) C12 and presure curve calculation will be done only for elastic P0.
+   D) all 40cm long target will do calculation in 40 VZ bins.    
