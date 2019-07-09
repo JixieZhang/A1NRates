@@ -196,16 +196,16 @@ double GetInteXS(double pBeamE, double pAngle, double pMomentum, double Z, int N
   cout.precision(4);
   //for HMS
   int run = 1;
-  double pTheta_tg_max=0.062;
+  double pTheta_tg_max=0.058;   //to better match method2
   double pTheta_tg_min=-0.054;
-  double pPhi_tg_max=0.031;    //to better match method2
+  double pPhi_tg_max=0.031;    
   double pPhi_tg_min=-0.031; 
   double pEprime_max=pMomentum*1.13;
   double pEprime_min=pMomentum*0.89;
   if(Name=="SHMS") {
     run = 2;
-    pTheta_tg_max=0.047;
-    pTheta_tg_min=-0.047;    //to better match method2
+    pTheta_tg_max=0.046;
+    pTheta_tg_min=-0.046;    //to better match method2
     pPhi_tg_max=0.025;
     pPhi_tg_min=-0.028;
     pEprime_max=pMomentum*1.27;
@@ -230,12 +230,17 @@ double GetInteXS(double pBeamE, double pAngle, double pMomentum, double Z, int N
   double pPhi_min = -80 *deg ;
   double pPhi_max =  80 *deg ;
 
+  //double dCosTh = 0.0005;  //xs changes rapidly in theta, therefore put tiny bin width here
+  //double dPhi = 0.002;
+  //double dEprime = 0.002;
+  //If Change dPhi from 0.002 to 0.01, geometry acceptance change is <0.3% for all targets
+  //If change dCosTh from 0.0005 to 0.001, 3He geometry acceptance will change 4%
+  //but geometry acceptance  for GE180(glass) at vz=-20cm will change ~7%
+  //If change dEprime from 0.002 to 0.005, geometry acceptance change is <0.3% for all targets
+  //except geometry acceptance for GE180(glass) at vz=-20cm will change ~7%
   double dCosTh = 0.0005;  //xs changes rapidly in theta, therefore put tiny bin width here
-  double dPhi = 0.002;
-  double dEprime = 0.002;  
-  //double dCosTh = 0.001;  //xs changes rapidly in theta, therefore put tiny bin width here
-  //double dPhi = 0.01;
-  //double dEprime = 0.005;
+  double dPhi = 0.01;
+  double dEprime = 0.002;
   
   double x_tg,y_tg,z_tg=0;
 
@@ -262,9 +267,15 @@ double GetInteXS(double pBeamE, double pAngle, double pMomentum, double Z, int N
       //convert Lab frame to Tranportation frame
       //void  P_HCS2TCS(double Theta_hall, double Phi_hall, double EndPlaneTheta_hall, double &Theta_tr, double &Phi_tr)
       Transform::P_HCS2TCS(pTheta, pPhi, pAngle, pTheta_tg, pPhi_tg);
-      //Jixie: do not need this cut any more
+      //Jixie: do not need this cut any more, but I found that method 1 is 10% more than method 2
+      //I am using these 2 cuts to make them match ( I could be wrong, since method 2 might underestimate rates by itself ...)
+      //conclusion:
+      //1) Theta_tg cut will reduce up to 15% geometry acceptance for HMS, up to 7% geometry acceptance for SHMS
+      //2) Phi_tg cut will reduce ~3.5% geometry acceptance.
+      //3) I would like to cut only onto Theta_tg, since Phi_tg has strong VZ dependence.  If I cut Phi_tg, GE180 calculation
+      //   will not be reliable.
       if(pTheta_tg>pTheta_tg_max || pTheta_tg<pTheta_tg_min)  continue;
-      if(pPhi_tg>pPhi_tg_max || pPhi_tg<pPhi_tg_min)  continue;
+      //if(pPhi_tg>pPhi_tg_max || pPhi_tg<pPhi_tg_min)  continue;  
       
       //project to target plane     
       //void Project(double x,double y,double z,double z_drift,double theta,double phi,double &x_out, double &y_out, double &z_out)
@@ -728,6 +739,9 @@ void A1NRates()
       //pure elas
       pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",1);
       pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",1);
+      //pure inelastic
+      //pRateHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",-1);  
+      //pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",-1);    
       //2-sc-bar only
       pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",30);
       pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",30);
