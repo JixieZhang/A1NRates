@@ -531,7 +531,7 @@ double GetInteXS_old(double pBeamE, double pAngle, double pMomentum, double Z, i
 
 ////////////////////////////////////////////////////////////////////////////
 //Beam Current in uA, All energies are in GeV unit. All angles are in radian unit.
-double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double pDetectorMomentum, string pDetectorName, int pElasOnly=0)
+double* GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double pDetectorMomentum, string pDetectorName, int pElasOnly=0)
 {
   if(pElasOnly==-1)  cout<<"\n===================Full acceptance:  Pure Inelastic =======================\n";
   if(pElasOnly==0)   cout<<"\n===================Full acceptance:  Inelastic + Elastic ==================\n";
@@ -582,6 +582,9 @@ double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double
 
   cout <<"\n Detector= "<<pDetectorName<<",  Beam_current= "<<pBeamCurrent<<" uA,  Angle= "<<pDetectorAngle/deg<<" deg"<<endl;
 
+  //this array will be returned to the caller, it has to be static, otherwise this array will be erased once this function finish 
+  static double myRates[7]={0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};  //use this to keep rates for each target material in L1 array
+   
   //Loop1, 
   const char *L1Name[]={"C12","He3","GE-180","GE-180","H2","N2","He3"};
   double L1Z[]={6., 2., double(-Z_ge180), double(-Z_ge180), 1.0, 7.0, 2.0};  //number of protons in one atom, for GE180, use negative z
@@ -591,7 +594,7 @@ double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double
   double L1MolMass[]={MolMass_c12, MolMass_he3, MolMass_ge180, MolMass_ge180, MolMass_pr*2, MolMass_n14*2, MolMass_he3};  //g
   double L1Thick[]={0.254, 40.0, 0.014, 0.014, 40.0, 40.0, 40.0}; //cm
   double L1VZ[]={0.0, 0.0, -20.0, 20.0, 0.0, 0.0, 0.0};  // vertex location in cm
-
+  
   //x an Q2 binning
   //v/cr vxcen(15) R 0.250 0.300 0.350 0.400 0.450 0.500 0.550 0.600 0.650 0.705 0.765 0.825 0.885 0.945 1.005
   //v/cr vxbin(15) R 0.025 0.025 0.025 0.025 0.025 0.025 0.025 0.025 0.025 0.030 0.030 0.030 0.030 0.030 0.030
@@ -701,6 +704,8 @@ double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double
         pInteXs=GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], L1VZ[i], pDetectorName, pElasOnly);
     }
     pInteRate=pLumi*pInteXs;
+    
+    myRates[i]=pInteRate;  //store the result into array for return
   
     cout<<setw(4)<<pDetectorName<<setw(8)<<L1Name[i]
         <<setprecision(4)<<setw(10)<<pBeamE
@@ -726,10 +731,131 @@ double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double
   cout.precision(pre);    //recover cout default precision
   cout.unsetf(std::ios::floatfield);  //recover cout floatfield properties
   
-  return 0;
+  return myRates;
 }
 
+////////////////////////////////////////////////////////////////////////////
+//calcualte suggested beam current and prescale factor
+void GetBeamPara(double pBeamI_uA, double pRate_Hz, double fixedBeamI_uA,
+                 double& SuggestedBeamI, int& SuggestedPS, double& SuggestedRate)
+{
+  const double kDAQLimit = 4500.0;  //Hz
+  const double kMaxBeamI = 30.0;    //uA
+  const double kMinBeamI = 0.2;     //uA
+  
+  double theRate=pRate_Hz;
+  double theBeamI=pBeamI_uA;
+  
+  //Get the Beam Current which will give the rate match to DAQLimit
+  if(fixedBeamI_uA > 0) {
+    SuggestedBeamI = fixedBeamI_uA;
+  } else {
+    SuggestedBeamI = theBeamI/theRate * kDAQLimit;
+    //Keep it as accurate as 0.01 uA
+    SuggestedBeamI = int(SuggestedBeamI*100.0)/100.;
+  }
 
+  //In case the suggested BeamI exceed maximum allowed beam current
+  if( SuggestedBeamI > kMaxBeamI ) SuggestedBeamI = kMaxBeamI;
+  if( SuggestedBeamI < kMinBeamI ) SuggestedBeamI = kMinBeamI;
+  
+  double tmpRate = SuggestedBeamI/theBeamI * theRate;
+
+  //get the prescale factor
+  SuggestedPS = int(ceil(tmpRate/kDAQLimit));
+  
+  //apply the prescale factor to the rate
+  SuggestedRate = tmpRate/SuggestedPS;
+}
+
+void GetBeamPara(double pBeamI_uA, double* pRate_HMS_Hz, double* pRate_SHMS_Hz)
+{
+  //the given pRate contains rates for the following target material
+  //const char *L1Name[]={"C12","He3","GE-180","GE-180","H2","N2","He3"};
+  double theRate;
+  double fixedBeamI_uA=-1.0;
+  double SuggestedBeamI;
+  int    SuggestedPS;
+  double SuggestedRate;
+
+  cout<<"\n Det     Target SuggestedBeamI SuggestedPS Rate(Hz)"<<endl;
+  //C12
+  if(pRate_HMS_Hz[0] > 0) {
+    fixedBeamI_uA = -1.0;
+    theRate = pRate_HMS_Hz[0];
+    GetBeamPara(pBeamI_uA,theRate,fixedBeamI_uA, SuggestedBeamI, SuggestedPS, SuggestedRate);
+    printf(" HMS %10s %14.3f %11d %8.2f\n","12C_2.54mm", SuggestedBeamI, SuggestedPS, SuggestedRate);
+  }
+  if(pRate_SHMS_Hz[0] > 0) {
+    fixedBeamI_uA = SuggestedBeamI;
+    theRate = pRate_SHMS_Hz[0]; 
+    GetBeamPara(pBeamI_uA,theRate,fixedBeamI_uA, SuggestedBeamI, SuggestedPS, SuggestedRate);
+    printf("SHMS %10s %14.3f %11d %8.2f\n","12C_2.54mm", SuggestedBeamI, SuggestedPS, SuggestedRate);
+  }
+  
+  //3He
+  if(pRate_HMS_Hz[1] > 0) {
+    fixedBeamI_uA = -1.0;
+    theRate = pRate_HMS_Hz[1] + pRate_HMS_Hz[2] + pRate_HMS_Hz[3]; 
+    GetBeamPara(pBeamI_uA,theRate,fixedBeamI_uA, SuggestedBeamI, SuggestedPS, SuggestedRate);
+    printf(" HMS %10s %14.3f %11d %8.2f\n","3He_12AMG", SuggestedBeamI, SuggestedPS, SuggestedRate);
+  }
+  
+  if(pRate_SHMS_Hz[1] > 0) {
+    fixedBeamI_uA = SuggestedBeamI;
+    theRate = pRate_SHMS_Hz[1] + pRate_SHMS_Hz[2] + pRate_SHMS_Hz[3]; 
+    GetBeamPara(pBeamI_uA,theRate,fixedBeamI_uA, SuggestedBeamI, SuggestedPS, SuggestedRate);
+    printf("SHMS %10s %14.3f %11d %8.2f\n","3He_12AMG", SuggestedBeamI, SuggestedPS, SuggestedRate);
+  }
+  
+  //reference cell
+  if(pRate_HMS_Hz[4] > 0 ) {
+    //H2
+    fixedBeamI_uA = -1.0;
+    theRate = pRate_HMS_Hz[4] + pRate_HMS_Hz[2] + pRate_HMS_Hz[3]; 
+    GetBeamPara(pBeamI_uA,theRate,fixedBeamI_uA, SuggestedBeamI, SuggestedPS, SuggestedRate);
+    printf(" HMS %10s %14.3f %11d %8.2f\n","H2_10ATM", SuggestedBeamI, SuggestedPS, SuggestedRate);
+  }
+  if(pRate_SHMS_Hz[4] > 0 ) {
+    //H2
+    fixedBeamI_uA = SuggestedBeamI;
+    theRate = pRate_SHMS_Hz[4] + pRate_SHMS_Hz[2] + pRate_SHMS_Hz[3]; 
+    GetBeamPara(pBeamI_uA,theRate,fixedBeamI_uA, SuggestedBeamI, SuggestedPS, SuggestedRate);
+    printf("SHMS %10s %14.3f %11d %8.2f\n","H2_10ATM", SuggestedBeamI, SuggestedPS, SuggestedRate);
+  }
+    
+  if(pRate_HMS_Hz[5] > 0 ) {
+    //N2
+    fixedBeamI_uA = -1.0;
+    theRate = pRate_HMS_Hz[5] + pRate_HMS_Hz[2] + pRate_HMS_Hz[3]; 
+    GetBeamPara(pBeamI_uA,theRate,fixedBeamI_uA, SuggestedBeamI, SuggestedPS, SuggestedRate);
+    printf(" HMS %10s %14.3f %11d %8.2f\n","N2_10ATM", SuggestedBeamI, SuggestedPS, SuggestedRate);
+  }
+    
+  if(pRate_SHMS_Hz[5] > 0 ) {
+    //N2
+    fixedBeamI_uA = SuggestedBeamI;
+    theRate = pRate_SHMS_Hz[5] + pRate_SHMS_Hz[2] + pRate_SHMS_Hz[3]; 
+    GetBeamPara(pBeamI_uA,theRate,fixedBeamI_uA, SuggestedBeamI, SuggestedPS, SuggestedRate);
+    printf("SHMS %10s %14.3f %11d %8.2f\n","N2_10ATM", SuggestedBeamI, SuggestedPS, SuggestedRate);
+  }
+    
+  if(pRate_HMS_Hz[5] > 0 ) {
+    //3He
+    fixedBeamI_uA = -1.0;
+    theRate = pRate_HMS_Hz[6] + pRate_HMS_Hz[2] + pRate_HMS_Hz[3]; 
+    GetBeamPara(pBeamI_uA,theRate,fixedBeamI_uA,SuggestedBeamI, SuggestedPS, SuggestedRate);
+    printf(" HMS %10s %14.3f %11d %8.2f\n","3He_10ATM", SuggestedBeamI, SuggestedPS, SuggestedRate);
+  }
+  if(pRate_SHMS_Hz[5] > 0 ) {
+    //3He
+    fixedBeamI_uA = SuggestedBeamI;
+    theRate = pRate_SHMS_Hz[6] + pRate_SHMS_Hz[2] + pRate_SHMS_Hz[3]; 
+    GetBeamPara(pBeamI_uA,theRate,fixedBeamI_uA,SuggestedBeamI, SuggestedPS, SuggestedRate);
+    printf("SHMS %10s %14.3f %11d %8.2f\n","3He_10ATM", SuggestedBeamI, SuggestedPS, SuggestedRate);
+  }
+}
+  
 ////////////////////////////////////////////////////////////////////////////
 void A1NRates()
 {
@@ -739,36 +865,72 @@ void A1NRates()
   const double kHMSP0[]={2.068,1.682,5.7,6.8,2.9,3.5};
   const double kSHMSAngle[]={8.5,8.5,12.5,12.5,30.0,30.0};
   const double kSHMSP0[]={2.083,1.718,5.8,7.5,2.4,3.4};
-  
-  double pRateHMS=0.0,pRateSHMS=0.0;
+
+  double *pRate;
+  double pRate_HMS[7], pRate_SHMS[7];
+  for(int i=0;i<7;i++) pRate_HMS[i] = pRate_SHMS[i] = 0.0;; 
   
   for(int j=0;j<6;j++) {
-    //double GetRate(double pBeamE, double pDetectorAngle, double pDetectorMomentum, string pDetectorName)
-    pRateHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",0);  
-    if(j!=1) pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",0);
     if(j==0) {
+      //elas and PbPt
+      /*
+      //inelas + elas
+      pRate = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",0);
+      for(int i=0;i<7;i++) pRate_HMS[i] = pRate[i]; 
+      pRate = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",0);
+      for(int i=0;i<7;i++) pRate_SHMS[i] = pRate[i];
+      GetBeamPara(kBeamI[j],pRate_HMS,pRate_SHMS);
+      
       //pure elas
-      pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",1);
-      pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",1);
+      pRate = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",1);
+      for(int i=0;i<7;i++) pRate_HMS[i] = pRate[i]; 
+      pRate = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",1);
+      for(int i=0;i<7;i++) pRate_SHMS[i] = pRate[i];
+      
       //pure inelastic
-      //pRateHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",-1);  
-      //pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",-1);    
+      //pRate = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",-1);  
+      //pRate = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",-1);
+      */ 
       //2-sc-bar only
-      pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",30);
-      pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",30);
+      pRate = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",30);
+      for(int i=0;i<7;i++) pRate_HMS[i] = pRate[i]; 
+      pRate = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",30);
+      for(int i=0;i<7;i++) pRate_SHMS[i] = pRate[i];
+      GetBeamPara(kBeamI[j],pRate_HMS,pRate_SHMS);
+       
       //pure elas and 2-sc-bar only
-      pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",31);
-      pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",31);
+      pRate = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",31);
+      for(int i=0;i<7;i++) pRate_HMS[i] = pRate[i]; 
+      pRate = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",31);
+      for(int i=0;i<7;i++) pRate_SHMS[i] = pRate[i]; 
     }
-    if(j==1) {
-      //apply W cuts fir Delta peak
-      pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",2);
-      if(j!=1) pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",2);
+    else if(j==1) {
+      //Delta peak
+      pRate = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",0);
+      for(int i=0;i<7;i++) pRate_HMS[i] = pRate[i]; 
+      pRate = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",0);
+      for(int i=0;i<7;i++) pRate_SHMS[i] = pRate[i];
+      GetBeamPara(kBeamI[j],pRate_HMS,pRate_SHMS);
+      
+      //apply W cuts for Delta peak
+      pRate = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",2);
+      for(int i=0;i<7;i++) pRate_HMS[i] = pRate[i]; 
+      pRate = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",2);
+      for(int i=0;i<7;i++) pRate_SHMS[i] = pRate[i]; 
     }
-    if(j>=2) {
+    else {
+      //DIS
+      pRate = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",0);
+      for(int i=0;i<7;i++) pRate_HMS[i] = pRate[i];    
+      pRate = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",0);
+      for(int i=0;i<7;i++) pRate_SHMS[i] = pRate[i];
+      GetBeamPara(kBeamI[j],pRate_HMS,pRate_SHMS);
+      
       //apply W cuts for DIS
-      pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",4);
-      pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",4);
+      pRate = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",4);
+      for(int i=0;i<7;i++) pRate_HMS[i] = pRate[i]; 
+      pRate = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",4);
+      for(int i=0;i<7;i++) pRate_SHMS[i] = pRate[i]; 
     }
   }
 }

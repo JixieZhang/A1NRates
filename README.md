@@ -58,4 +58,5 @@ First release version v1.0.0.
         ElasOnly=-30: pure inelastic for 2-SC-Bar acceptance.
         ElasOnly=30: inelastic + elastic for 2-SC-Bar acceptance.
         ElasOnly=31: pure elastic for 2-SC-Bar acceptance.
-
+        
+5. The best acceptance files have been placed here: ifarm1401:/work/halla/g2p/disk1/jixie/A1N/acceptance/
