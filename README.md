@@ -43,8 +43,19 @@ First release version v1.0.0.
    A) Only 40cm 3He target will do X bin calculation.
    B) If (ElasOnly < 0), only do inelastic calculation for H2, N2 and 3He target.
    C) C12 and presure curve calculation will be done only for elastic P0.
-   D) all 40cm long target will do calculation in 40 VZ bins.    
-4. Changed Main.cc. If no argument is used, will call A1NRates() to calclulate rates for the whole A1N kenimatic points.
-   If 5 arguments are given, will call GetRate(XXX) to calculate rates for the given point.
-   Usage: a1nrates <BeamCurrent_uA> <Beam_GeV> <DetectorAngle_deg> <DetectorMomentum_GeV> <DetectorName=HMS|SHMS> [ElasOnly=0]
+   D) all 40cm long target will do calculation in 40 VZ bins.
+   E) Update Xbj bin to match Xiaochao's binning.
+4. Changed Main.cc. If no argument is used, it will call A1NRates() to calculate rates for the whole A1N kinematic points.
+   If 5 arguments are given, it will call GetRate(XXX) to calculate rates for the given point.
    
+ Usage: ./a1nrates <BeamCurrent_uA> <Beam_GeV> <DetectorAngle_deg> <DetectorMomentum_GeV> <DetectorName=HMS|SHMS> [ElasOnly=0]
+        All energies are in GeV unit. All angles are in degree unit.
+        ElasOnly=-1: pure inelastic for full acceptance.
+        ElasOnly=0:  inelastic + elastic for full acceptance.
+        ElasOnly=1:  pure elastic for full acceptance.
+        ElasOnly=2:  inelastic + elastic for full acceptance, with cut of 1.10<W<1.35.
+        ElasOnly=4:  inelastic + elastic for full acceptance. with cut of 2.00<W<100.0
+        ElasOnly=-30: pure inelastic for 2-SC-Bar acceptance.
+        ElasOnly=30: inelastic + elastic for 2-SC-Bar acceptance.
+        ElasOnly=31: pure elastic for 2-SC-Bar acceptance.
+
