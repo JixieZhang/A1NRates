@@ -36,9 +36,15 @@ First release version v1.0.0.
    A) W cut is no longer identified by ElasOnly flag.  User will provide Wmin and Wmax. By default
    Wmin=Wmax=-1.0.  W cut will be applied only if Wmax>=0;
    B) Added more ElasOnly flags. If ElasOnly<0, will do inelastic xs only. Use ElasOnly=-30,30,31 for 2-SC-Bar acceptance calculation.
-   Use ElasOnly=-1,0,1 for full acceptance calculation.    
+   Use ElasOnly=-1,0,1 for full acceptance calculation.
+   C) Final cuts: no collimation cut on honrizontal angle (Phi_tg), but apply vertical angle (Theta_tg) cut to match the result of method 2.
+   D) Final bin width: dCosth=0.0005, dPhi=0.1, dP=0.002
 3. Changed GetRate():
    A) Only 40cm 3He target will do X bin calculation.
    B) If (ElasOnly < 0), only do inelastic calculation for H2, N2 and 3He target.
    C) C12 and presure curve calculation will be done only for elastic P0.
    D) all 40cm long target will do calculation in 40 VZ bins.    
+4. Changed Main.cc. If no argument is used, will call A1NRates() to calclulate rates for the whole A1N kenimatic points.
+   If 5 arguments are given, will call GetRate(XXX) to calculate rates for the given point.
+   Usage: a1nrates <BeamCurrent_uA> <Beam_GeV> <DetectorAngle_deg> <DetectorMomentum_GeV> <DetectorName=HMS|SHMS> [ElasOnly=0]
+   

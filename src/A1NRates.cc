@@ -31,7 +31,7 @@ using namespace std;
 // >=4: print a lot of debug information in GetInteXS()     
 // >=5: print more debug information in GetInteXS()      
 // >=6: print even more debug information in GetInteXS() and GetXS()     
-#define DEBUG 1
+#define DEBUG 2
 
 static const double deg = acos(0.0)/90.0;
 double GetXS(float Ei, float Ef, float Theta, float Tb, float Ta, int ElasOnly=0);
@@ -372,22 +372,22 @@ double GetInteXS(double pBeamE, double pAngle, double pMomentum, double Z, int N
 //ElasOnly=30: inelastic + elastic for 2-SC-Bar acceptance
 //ElasOnly=31: pure elastic for 2-SC-Bar acceptance
 double GetInteXS_old(double pBeamE, double pAngle, double pMomentum, double Z, int N, double VZ, string Name, int ElasOnly=0,
-                 double pXmin=-1.0, double pXmax=-1.0, double pQ2min=-1.0, double pQ2max=-1.0,double pWmin=-1.0, double pWmax=-1.0)
+                     double pXmin=-1.0, double pXmax=-1.0, double pQ2min=-1.0, double pQ2max=-1.0,double pWmin=-1.0, double pWmax=-1.0)
 {
   int pre = cout.precision();   //get the original precision of cout
   cout.precision(4);
   //for HMS
   int run = 1;
-  double pTheta_tg_max=0.062;
+  double pTheta_tg_max=0.058;    //to better match method2
   double pTheta_tg_min=-0.054;
-  double pPhi_tg_max=0.031;    //to better match method2
+  double pPhi_tg_max=0.031;
   double pPhi_tg_min=-0.031; 
   double pEprime_max=pMomentum*1.13;
   double pEprime_min=pMomentum*0.89;
   if(Name=="SHMS") {
     run = 2;
-    pTheta_tg_max=0.047;
-    pTheta_tg_min=-0.047;
+    pTheta_tg_max=0.046;
+    pTheta_tg_min=-0.046;
     pPhi_tg_max=0.025;
     pPhi_tg_min=-0.028;
     pEprime_max=pMomentum*1.27;
@@ -443,7 +443,7 @@ double GetInteXS_old(double pBeamE, double pAngle, double pMomentum, double Z, i
       Transform::P_HCS2TCS(pTheta, pPhi, pAngle, pTheta_tg, pPhi_tg);
       //Jixie: do not need this cut any more
       if(pTheta_tg>pTheta_tg_max || pTheta_tg<pTheta_tg_min)  continue;
-      if(pPhi_tg>pPhi_tg_max || pPhi_tg<pPhi_tg_min)  continue;
+      //if(pPhi_tg>pPhi_tg_max || pPhi_tg<pPhi_tg_min)  continue;
       
       //project to target plane     
       //void Project(double x,double y,double z,double z_drift,double theta,double phi,double &x_out, double &y_out, double &z_out)
@@ -537,6 +537,7 @@ double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double
   if(pElasOnly==0)   cout<<"\n===================Full acceptance:  Inelastic + Elastic ==================\n";
   if(pElasOnly==1)   cout<<"\n===================Full acceptance:  Pure elastic =========================\n";
   if(pElasOnly==2)   cout<<"\n===================Full acceptance:  With Delta (1.1<W<1.35) Cut ==========\n";
+  if(pElasOnly==4)   cout<<"\n===================Full acceptance:  With DIS (2.0<W<100.0) Cut ===========\n";
   if(pElasOnly==-30) cout<<"\n===================Only 2 SC bars:  Pure Inelastic ========================\n";
   if(pElasOnly==30)  cout<<"\n===================Only 2 SC bars:  Inelastic + Elastic ===================\n";
   if(pElasOnly==31)  cout<<"\n===================Only 2 SC bars:  Pure elastic ==========================\n";
@@ -592,7 +593,9 @@ double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double
   double L1VZ[]={0.0, 0.0, -20.0, 20.0, 0.0, 0.0, 0.0};  // vertex location in cm
 
   //x an Q2 binning
-  double L1Xbj[]={0.225, 0.275, 0.325, 0.375, 0.425, 0.475, 0.525, 0.575, 0.625, 0.675, 0.725, 0.775, 0.825};  // x boundary
+  //v/cr vxcen(15) R 0.250 0.300 0.350 0.400 0.450 0.500 0.550 0.600 0.650 0.705 0.765 0.825 0.885 0.945 1.005
+  //v/cr vxbin(15) R 0.025 0.025 0.025 0.025 0.025 0.025 0.025 0.025 0.025 0.030 0.030 0.030 0.030 0.030 0.030
+  double L1Xbj[]={0.225, 0.275, 0.325, 0.375, 0.425, 0.475, 0.525, 0.575, 0.625, 0.675, 0.735, 0.795, 0.855, 0.915, 0.975};  // x boundary
   double L1Q2[]={2.0, 2.5, 3.0, 3.5, 4.0, 5.0, 6.0, 7.0};  //Q2 boundary
 
 
@@ -618,15 +621,17 @@ double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double
     //I will also do x binning for He3 DIS run
     if(i==1 && pBeamE>8.0) {
       //He3, calculate xs for each x-z bin
-      for(int ix=0;ix<12;ix++) {
+      for(int ix=0;ix<14;ix++) {
       
-        int nTry = 40;
+        int nTry = 20;
         double pXS_he3 = 0, pXS_tot_he3 = 0;
         for(int iz=0;iz<nTry;iz++) {
           double pVZ = -0.5*L1Thick[i] + (iz+0.5)* (L1Thick[i]/nTry);
           
           if(pElasOnly==2)
             pXS_he3=GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], pVZ, pDetectorName, pElasOnly,L1Xbj[ix],L1Xbj[ix+1],-1.,-1.,1.10,1.35);
+          else if(pElasOnly==4)
+            pXS_he3=GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], pVZ, pDetectorName, pElasOnly,L1Xbj[ix],L1Xbj[ix+1],-1.,-1.,2.00,100.0);
           else
             pXS_he3=GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], pVZ, pDetectorName, pElasOnly, L1Xbj[ix],L1Xbj[ix+1]);
 
@@ -644,7 +649,7 @@ double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double
     }
     else if (i==1 || i>=4) {
       //long target, calculate xs for each z bin     
-      int nTry = 40;
+      int nTry = 20;
       double pXS_long = 0, pXS_tot_long = 0;
 #ifdef CMP_GETINTEXS        
       double pXS_long_old, pXS_tot_long_old=0;
@@ -654,6 +659,8 @@ double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double
         double pVZ = -0.5*L1Thick[i] + (iz+0.5)* (L1Thick[i]/nTry);
         if(pElasOnly==2)
           pXS_long=GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], pVZ, pDetectorName, pElasOnly,-1.,-1.,-1.,-1.,1.10,1.35);
+        else if(pElasOnly==4)
+          pXS_long=GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], pVZ, pDetectorName, pElasOnly,-1.,-1.,-1.,-1.,2.00,100.0);
         else
           pXS_long=GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], pVZ, pDetectorName, pElasOnly);
         if(DEBUG>=3) cout<<"  VZ = "<<setw(6)<<pVZ<<"  InteXS_"<<L1Name[i]<<" = "<<setw(8)<<pXS_long*1.0E6<<" (pb)"<<endl;
@@ -664,6 +671,8 @@ double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double
         if(DEBUG>=3) {
           if(pElasOnly==2)
             pXS_long_old=GetInteXS_old(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], pVZ, pDetectorName, pElasOnly,-1.,-1.,-1.,-1.,1.10,1.35);
+          else if(pElasOnly==4)
+            pXS_long_old=GetInteXS_old(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], pVZ, pDetectorName, pElasOnly,-1.,-1.,-1.,-1.,2.00,100.0);
           else
             pXS_long_old=GetInteXS_old(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], pVZ, pDetectorName, pElasOnly);
           pXS_tot_long_old += pXS_long_old;
@@ -686,6 +695,8 @@ double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double
     else {
       if(pElasOnly==2)
         pInteXs=GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], L1VZ[i], pDetectorName, pElasOnly,-1.,-1.,-1.,-1.,1.10,1.35);
+      else if(pElasOnly==4)
+        pInteXs=GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], L1VZ[i], pDetectorName, pElasOnly,-1.,-1.,-1.,-1.,2.00,100.0);
       else
         pInteXs=GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], L1VZ[i], pDetectorName, pElasOnly);
     }
@@ -734,7 +745,7 @@ void A1NRates()
   for(int j=0;j<6;j++) {
     //double GetRate(double pBeamE, double pDetectorAngle, double pDetectorMomentum, string pDetectorName)
     pRateHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",0);  
-    pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",0);   
+    if(j!=1) pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",0);
     if(j==0) {
       //pure elas
       pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",1);
@@ -750,9 +761,14 @@ void A1NRates()
       pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",31);
     }
     if(j==1) {
-      //apply W cuts
+      //apply W cuts fir Delta peak
       pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",2);
-      pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",2);
+      if(j!=1) pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",2);
+    }
+    if(j>=2) {
+      //apply W cuts for DIS
+      pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",4);
+      pRateSHMS = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",4);
     }
   }
 }
