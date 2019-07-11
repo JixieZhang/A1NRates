@@ -179,6 +179,76 @@ double GetXS_GE180(float Ei, float Ef, float Theta, float Tb, float Ta, int Elas
 }
 
 
+void GetA1NTaTb(double Z, double N, double VZ, double Theta, double& Tb, double& Ta)
+{
+  Ta=Tb=0.0;
+  //uncomment the next line if you want to turn on rad. corr.
+  //return;
+  
+  double CosTh = cos(Theta);
+  double SinTh = sin(Theta);
+  //rad. corr., gas contribution is negligible, therefore I use 12 AMG of 3He for 3He at 10 ATM  
+  const double kX0_GE180 = 7.033; //cm
+  const double kX0_3He = 44947.0; //cm, @ 10 ATM
+  const double kX0_H2 = 75047.6;  //cm, @ 10 ATM
+  const double kX0_N2 = 3260.94;  //cm, @ 10 ATM
+  const double kX0_12C = 18.8;    //cm
+  const double kCellRadiusIn = 0.87*2.54;    //0.87 inch
+  const double kCellWallThick = 0.10;        //1 mm
+
+  //get the theta limit that a particle can hit the wall
+  double Theta_W = atan2(kCellRadiusIn,20.0-kCellRadiusIn-VZ);
+  if(Theta_W<0.0) Theta_W += 3.1415926535;
+  
+  //get the path length thrught which a paritle going out will go
+  double PathLength_wall = kCellWallThick/SinTh / kX0_GE180; // in rad.len. unit
+  double PathLength_end = 0.014/CosTh / kX0_GE180;  // in rad.len. unit
+  double Pathlength_out = (Theta>Theta_W) ? PathLength_wall : PathLength_end;
+
+  //add the thickness that outside the cell (he4 bag and entrance|exit window of the spectrometer)
+  double Pathlength_extra = 0.01;
+  Pathlength_out += Pathlength_extra;
+
+  
+  if(Z<0.0) {
+    //GE180
+    if(VZ<-15.0) {
+      //upstream window: //0.007cm GE180
+      Tb = 0.007/kX0_GE180;
+      Ta = 0.007/CosTh/kX0_GE180 + Pathlength_out;
+    }
+    if(VZ>15.0) {
+      //downstream window: //0.014cm GE180 + 40cm 3He + 0.007cm GE180
+      Tb = 0.021/kX0_GE180 + 40/kX0_3He;
+      Ta = 0.007/CosTh/kX0_GE180 + Pathlength_extra;
+    }
+  } else if(fabs(Z-1)<0.1 && fabs(N-0)<0.1) {
+    //H2:   //0.014cm GE180 + (20+Z)cm H2 
+    Tb = 0.014/kX0_GE180 + (20+VZ)/kX0_H2;
+    Ta = (20-VZ)/CosTh/kX0_H2 + Pathlength_out;
+  } else if(fabs(Z-2)<0.1 && fabs(N-1)<0.1) {
+    //He3:   //0.014cm GE180 + (20+Z)cm 3He 
+    Tb = 0.014/kX0_GE180 + (20+VZ)/kX0_3He;
+    Ta = (20-VZ)/CosTh/kX0_3He + Pathlength_out;
+  } else if(fabs(Z-7)<0.1 && fabs(N-7)<0.1) {
+    //N2:   //0.014cm GE180 + (20+Z)cm N2 
+    Tb = 0.014/kX0_GE180 + (20+VZ)/kX0_N2;
+    Ta = (20-VZ)/CosTh/kX0_N2 + Pathlength_out;  
+  } else if(fabs(Z-6)<0.1 && fabs(N-6)<0.1) {
+    //C12:   //50 mil 12C
+    Tb = 0.127/kX0_GE180;
+    Ta = 0.127/CosTh/kX0_GE180;  
+  } else {
+    Tb = 0.0;
+    Ta = 0.0;
+  }
+
+  if(DEBUG>=6) {
+    cout<<" Z="<<Z<<" N="<<N<<" VZ="<<VZ<<" Theta_W="<<Theta_W/deg<<" Theta="<<Theta/deg<<" (deg) ==> Ta="<<Ta<<",  Tb="<<Tb<<endl;
+  }
+  return;
+}
+  
 ////////////////////////////////////////////////////////////////////////////
 //old version is binned in Theta-Phi-P, new version is binned in CosTheta-Phi-P
 //get integrated xs for given element at given vertex z,
@@ -212,7 +282,9 @@ double GetInteXS(double pBeamE, double pAngle, double pMomentum, double Z, int N
     pEprime_min=pMomentum*0.82;
   }
   if(pEprime_max>pBeamE) pEprime_max=pBeamE;
-    
+
+  double Tb=0.0,Ta=0.0;
+  
   const double AMU = 0.9314941;
   double pMtg=(fabs(Z)+fabs(N))*AMU;
   double pP_elas=0.0;
@@ -260,6 +332,9 @@ double GetInteXS(double pBeamE, double pAngle, double pMomentum, double Z, int N
       cout<<" pTheta="<<pTheta/deg<<"(deg),  pEprime_min="<<pEprime_min<<"  pEprime_max="<<pEprime_max<<"  thisEprime_max="<<thisEprime_max<<endl;
     }
 
+    //get the radation length of the path length
+    GetA1NTaTb(Z,N,VZ,pTheta,Tb,Ta);
+  
     pPhi = pPhi_min - 0.5*dPhi;
     while (pPhi < pPhi_max) {
       pPhi += dPhi;
@@ -339,7 +414,7 @@ double GetInteXS(double pBeamE, double pAngle, double pMomentum, double Z, int N
         
         if(ElasOnly!=1 && ElasOnly!=31) {
           pXs = 0.0;
-          if(pQ2 < 11.0) pXs = GetXS(Z, N, pBeamE, pEprime, pTheta, 0.000, 0.000, 0);
+          if(pQ2 < 11.0) pXs = GetXS(Z, N, pBeamE, pEprime, pTheta, Tb, Ta, 0);
           if(DEBUG>=4) cout<<" Xbj = "<< pXbj<<"  Q2 = "<<pQ2<<"  PBosted::GetXS() = "<<pXs*1.0E3<<" (nb/GeV/Sr)"<<endl;
           pInteXs += pXs*deltaEprime*dOmega*pAcc;
         }
@@ -347,7 +422,7 @@ double GetInteXS(double pBeamE, double pAngle, double pMomentum, double Z, int N
         //check if elastic events are accepted or not, add only once per dOmega
         //please note that elas xs is for per nucleus
         if(fabs(pP_elas-pEprime)<0.51*deltaEprime && ElasOnly>=0) {
-          pXs_elas = GetXS(Z, N, pBeamE, pEprime, pTheta, 0.000, 0.000, 1);
+          pXs_elas = GetXS(Z, N, pBeamE, pEprime, pTheta, Tb, Ta, 1);
           if(DEBUG>=4) cout<<" pP_elas="<<pP_elas<<" deltaEprime="<<deltaEprime<<",  ElasModel::GetXS() = "<<pXs_elas*1.0E3<<" (nb/Sr)"<<endl;
           pInteXs += pXs_elas*dOmega*pAcc;
           if(DEBUG>=7) {char cc[100];cout<<"\nPress any key to continue ...";cin>>cc;}
@@ -395,6 +470,8 @@ double GetInteXS_old(double pBeamE, double pAngle, double pMomentum, double Z, i
   }
   if(pEprime_max>pBeamE) pEprime_max=pBeamE;
     
+  double Tb=0.0,Ta=0.0;
+  
   const double AMU = 0.9314941;
   double pMtg=(fabs(Z)+fabs(N))*AMU;
   double pP_elas=0.0;
@@ -433,6 +510,9 @@ double GetInteXS_old(double pBeamE, double pAngle, double pMomentum, double Z, i
     if(DEBUG>=4) {
       cout<<" pTheta="<<pTheta/deg<<"(deg),  pEprime_min="<<pEprime_min<<"  pEprime_max="<<pEprime_max<<"  thisEprime_max="<<thisEprime_max<<endl;
     }
+    
+    //get the radation length of the path length
+    GetA1NTaTb(Z,N,VZ,pTheta,Tb,Ta);
 
     pPhi = pPhi_min - 0.5*dPhi;
     while (pPhi < pPhi_max) {
@@ -507,7 +587,7 @@ double GetInteXS_old(double pBeamE, double pAngle, double pMomentum, double Z, i
         
         if(ElasOnly!=1 && ElasOnly!=31) {
           pXs = 0.0;
-          if(pQ2 < 11.0) pXs = GetXS(Z, N, pBeamE, pEprime, pTheta, 0.000, 0.000, 0);
+          if(pQ2 < 11.0) pXs = GetXS(Z, N, pBeamE, pEprime, pTheta, Tb, Ta, 0);
           if(DEBUG>=4) cout<<" Xbj = "<< pXbj<<"  Q2 = "<<pQ2<<"  PBosted::GetXS() = "<<pXs*1.0E3<<" (nb/GeV/Sr)"<<endl;
           pInteXs += pXs*deltaEprime*dOmega*pAcc;
         }
@@ -515,7 +595,7 @@ double GetInteXS_old(double pBeamE, double pAngle, double pMomentum, double Z, i
         //check if elastic events are accepted or not, add only once per dOmega
         //please note that elas xs is for per nucleus
         if(fabs(pP_elas-pEprime)<0.51*deltaEprime && ElasOnly>=0) {
-          pXs_elas = GetXS(Z, N, pBeamE, pEprime, pTheta, 0.000, 0.000, 1);
+          pXs_elas = GetXS(Z, N, pBeamE, pEprime, pTheta, Tb, Ta, 1);
           if(DEBUG>=4) cout<<" pP_elas="<<pP_elas<<" deltaEprime="<<deltaEprime<<",  ElasModel::GetXS() = "<<pXs_elas*1.0E3<<" (nb/Sr)"<<endl;
           pInteXs += pXs_elas*dOmega*pAcc;
           if(DEBUG>=7) {char cc[100];cout<<"\nPress any key to continue ...";cin>>cc;}

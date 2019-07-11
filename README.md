@@ -80,5 +80,6 @@ First release version v1.0.0.
         ElasOnly=-30: pure inelastic for 2-SC-Bar acceptance.
         ElasOnly=30: inelastic + elastic for 2-SC-Bar acceptance.
         ElasOnly=31: pure elastic for 2-SC-Bar acceptance.
-
+8.  Added GetA1NTaTb() to calculate Ta and Tb for radiation correction.
+ 
 
