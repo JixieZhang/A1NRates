@@ -599,7 +599,7 @@ double* GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, doubl
   //x an Q2 binning
   //v/cr vxcen(15) R 0.250 0.300 0.350 0.400 0.450 0.500 0.550 0.600 0.650 0.705 0.765 0.825 0.885 0.945 1.005
   //v/cr vxbin(15) R 0.025 0.025 0.025 0.025 0.025 0.025 0.025 0.025 0.025 0.030 0.030 0.030 0.030 0.030 0.030
-  double L1Xbj[]={0.225, 0.275, 0.325, 0.375, 0.425, 0.475, 0.525, 0.575, 0.625, 0.675, 0.735, 0.795, 0.855, 0.915, 0.975};  // x boundary
+  double L1Xbj[]={0.025, 0.225, 0.275, 0.325, 0.375, 0.425, 0.475, 0.525, 0.575, 0.625, 0.675, 0.735, 0.795, 0.855, 0.915, 0.975};  // x boundary
   double L1Q2[]={2.0, 2.5, 3.0, 3.5, 4.0, 5.0, 6.0, 7.0};  //Q2 boundary
 
 
@@ -625,7 +625,7 @@ double* GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, doubl
     //I will also do x binning for He3 DIS run
     if(i==1 && pBeamE>8.0) {
       //He3, calculate xs for each x-z bin
-      for(int ix=0;ix<14;ix++) {
+      for(int ix=0;ix<15;ix++) {
       
         int nTry = 20;
         double pXS_he3 = 0, pXS_tot_he3 = 0;
@@ -762,8 +762,8 @@ void GetBeamPara(double pBeamI_uA, double pRate_Hz, double fixedBeamI_uA,
   
   double tmpRate = SuggestedBeamI/theBeamI * theRate;
 
-  //get the prescale factor
-  SuggestedPS = int(ceil(tmpRate/kDAQLimit));
+  //get the prescale factor, if it is not exceed N.15, still round it to N
+  SuggestedPS = int(ceil(tmpRate/kDAQLimit-0.15)); 
   
   //apply the prescale factor to the rate
   SuggestedRate = tmpRate/SuggestedPS;
