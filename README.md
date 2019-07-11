@@ -42,8 +42,8 @@ First release version v1.0.0.
 3. Changed GetRate():
    A) Only 40cm 3He target will do X bin calculation.
    B) If (ElasOnly < 0), only do inelastic calculation for H2, N2 and 3He target.
-   C) C12 and presure curve calculation will be done only for elastic P0.
-   D) all 40cm long target will do calculation in 40 VZ bins.
+   C) C12 and pressure curve calculation will be done only for elastic P0.
+   D) all 40cm long target will do calculation in 20 VZ bins.
    E) Update Xbj bin to match Xiaochao's binning.
 4. Changed Main.cc. If no argument is used, it will call A1NRates() to calculate rates for the whole A1N kinematic points.
    If 5 arguments are given, it will call GetRate(XXX) to calculate rates for the given point.
@@ -60,3 +60,25 @@ First release version v1.0.0.
         ElasOnly=31: pure elastic for 2-SC-Bar acceptance.
         
 5. The best acceptance files have been placed here: ifarm1401:/work/halla/g2p/disk1/jixie/A1N/acceptance/
+
+6. Added GetBeamPara() to calculate suggested beam current and pre-scale factor.
+
+7. Added D2NRates() to calculate rates for d2n. main() was changed to adapt this change. New usage is as the following.
+
+ Calcualte rates for A1N or D2N. There are 2 modes to run this program:
+
+ Usage 1: ./a1nrates <task=-1|-2> 
+          This will calculate rates for all kinematic points for A1N(task=-1) or d2n(task=-2)
+
+ Usage 2: ./a1nrates <BeamCurrent_uA> <Beam_GeV> <DetectorAngle_deg> <DetectorMomentum_GeV> <DetectorName=HMS|SHMS> [ElasOnly=0]
+        All energies are in GeV unit. All angles are in degree unit.
+        ElasOnly=-1: pure inelastic for full acceptance.
+        ElasOnly=0:  inelastic + elastic for full acceptance.
+        ElasOnly=1:  pure elastic for full acceptance.
+        ElasOnly=2:  inelastic + elastic for full acceptance, with cut of 1.10<W<1.35.
+        ElasOnly=4:  inelastic + elastic for full acceptance. with cut of 2.00<W<100.0
+        ElasOnly=-30: pure inelastic for 2-SC-Bar acceptance.
+        ElasOnly=30: inelastic + elastic for 2-SC-Bar acceptance.
+        ElasOnly=31: pure elastic for 2-SC-Bar acceptance.
+
+

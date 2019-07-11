@@ -583,7 +583,8 @@ double* GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, doubl
   cout <<"\n Detector= "<<pDetectorName<<",  Beam_current= "<<pBeamCurrent<<" uA,  Angle= "<<pDetectorAngle/deg<<" deg"<<endl;
 
   //this array will be returned to the caller, it has to be static, otherwise this array will be erased once this function finish 
-  static double myRates[7]={0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};  //use this to keep rates for each target material in L1 array
+  static double myRates[7];  //use this to keep rates for each target material in L1 array
+  for(int i=0;i<7;i++) {myRates[i]=0.0;}
    
   //Loop1, 
   const char *L1Name[]={"C12","He3","GE-180","GE-180","H2","N2","He3"};
@@ -859,6 +860,7 @@ void GetBeamPara(double pBeamI_uA, double* pRate_HMS_Hz, double* pRate_SHMS_Hz)
 ////////////////////////////////////////////////////////////////////////////
 void A1NRates()
 {
+  cout<<"\n====================Calculate rates for A1N using method 1 =================\n";
   const double kBeamI[]={1.0,1.0,30.0,30.0,30.0,30.0};  //in uA
   const double kBeamE[]={2.1,2.1,10.5,10.5,10.5,10.5};
   const double kHMSAngle[]={11.7,11.7,12.5,12.5,30.0,30.0};
@@ -868,13 +870,14 @@ void A1NRates()
 
   double *pRate;
   double pRate_HMS[7], pRate_SHMS[7];
-  for(int i=0;i<7;i++) pRate_HMS[i] = pRate_SHMS[i] = 0.0;; 
+  for(int i=0;i<7;i++) pRate_HMS[i] = pRate_SHMS[i] = 0.0;
   
   for(int j=0;j<6;j++) {
     if(j==0) {
       //elas and PbPt
       /*
       //inelas + elas
+      for(int i=0;i<7;i++) pRate_HMS[i] = pRate_SHMS[i] = 0.0;  //reset
       pRate = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",0);
       for(int i=0;i<7;i++) pRate_HMS[i] = pRate[i]; 
       pRate = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",0);
@@ -882,16 +885,21 @@ void A1NRates()
       GetBeamPara(kBeamI[j],pRate_HMS,pRate_SHMS);
       
       //pure elas
+      for(int i=0;i<7;i++) pRate_HMS[i] = pRate_SHMS[i] = 0.0;  //reset
       pRate = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",1);
       for(int i=0;i<7;i++) pRate_HMS[i] = pRate[i]; 
       pRate = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",1);
       for(int i=0;i<7;i++) pRate_SHMS[i] = pRate[i];
       
       //pure inelastic
+      //for(int i=0;i<7;i++) pRate_HMS[i] = pRate_SHMS[i] = 0.0;  //reset
       //pRate = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",-1);  
+      //for(int i=0;i<7;i++) pRate_HMS[i] = pRate[i]; 
       //pRate = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",-1);
+      //for(int i=0;i<7;i++) pRate_SHMS[i] = pRate[i]; 
       */ 
       //2-sc-bar only
+      for(int i=0;i<7;i++) pRate_HMS[i] = pRate_SHMS[i] = 0.0;  //reset
       pRate = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",30);
       for(int i=0;i<7;i++) pRate_HMS[i] = pRate[i]; 
       pRate = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",30);
@@ -899,6 +907,7 @@ void A1NRates()
       GetBeamPara(kBeamI[j],pRate_HMS,pRate_SHMS);
        
       //pure elas and 2-sc-bar only
+      for(int i=0;i<7;i++) pRate_HMS[i] = pRate_SHMS[i] = 0.0;  //reset
       pRate = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",31);
       for(int i=0;i<7;i++) pRate_HMS[i] = pRate[i]; 
       pRate = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",31);
@@ -906,6 +915,7 @@ void A1NRates()
     }
     else if(j==1) {
       //Delta peak
+      for(int i=0;i<7;i++) pRate_HMS[i] = pRate_SHMS[i] = 0.0;  //reset
       pRate = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",0);
       for(int i=0;i<7;i++) pRate_HMS[i] = pRate[i]; 
       pRate = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",0);
@@ -913,6 +923,7 @@ void A1NRates()
       GetBeamPara(kBeamI[j],pRate_HMS,pRate_SHMS);
       
       //apply W cuts for Delta peak
+      for(int i=0;i<7;i++) pRate_HMS[i] = pRate_SHMS[i] = 0.0;  //reset
       pRate = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",2);
       for(int i=0;i<7;i++) pRate_HMS[i] = pRate[i]; 
       pRate = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",2);
@@ -920,6 +931,7 @@ void A1NRates()
     }
     else {
       //DIS
+      for(int i=0;i<7;i++) pRate_HMS[i] = pRate_SHMS[i] = 0.0;  //reset
       pRate = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",0);
       for(int i=0;i<7;i++) pRate_HMS[i] = pRate[i];    
       pRate = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",0);
@@ -927,11 +939,46 @@ void A1NRates()
       GetBeamPara(kBeamI[j],pRate_HMS,pRate_SHMS);
       
       //apply W cuts for DIS
+      for(int i=0;i<7;i++) pRate_HMS[i] = pRate_SHMS[i] = 0.0;  //reset
       pRate = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",4);
       for(int i=0;i<7;i++) pRate_HMS[i] = pRate[i]; 
       pRate = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",4);
       for(int i=0;i<7;i++) pRate_SHMS[i] = pRate[i]; 
     }
+  }
+}
+
+
+void D2NRates()
+{
+  cout<<"\n===================Calculate rates for d2n using method 1 =================\n";
+  const double kBeamI[]    ={30.0, 30.0, 30.0, 30.0};  //in uA
+  const double kBeamE[]    ={10.5, 10.5, 10.5, 10.5};
+  const double kHMSAngle[] ={13.5, 16.4, 20.0, 25.0};
+  const double kHMSP0[]    ={ 4.3,  5.1,  4.0,  2.5};
+  const double kSHMSAngle[]={11.0, 13.3, 15.5, 18.0};
+  const double kSHMSP0[]   ={ 7.5,  7.0,  6.3,  5.6};
+
+  double *pRate;
+  double pRate_HMS[7], pRate_SHMS[7];
+  for(int i=0;i<7;i++) pRate_HMS[i] = pRate_SHMS[i] = 0.0;
+  
+  for(int j=0;j<4;j++) {   
+    //DIS
+    for(int i=0;i<7;i++) pRate_HMS[i] = pRate_SHMS[i] = 0.0;  //reset
+    pRate = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",0);
+    for(int i=0;i<7;i++) pRate_HMS[i] = pRate[i];    
+    pRate = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",0);
+    for(int i=0;i<7;i++) pRate_SHMS[i] = pRate[i];
+    GetBeamPara(kBeamI[j],pRate_HMS,pRate_SHMS);
+    /*
+    //apply W cuts for DIS
+    for(int i=0;i<7;i++) pRate_HMS[i] = pRate_SHMS[i] = 0.0;  //reset
+    pRate = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",4);
+    for(int i=0;i<7;i++) pRate_HMS[i] = pRate[i]; 
+    pRate = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",4);
+    for(int i=0;i<7;i++) pRate_SHMS[i] = pRate[i]; 
+    */
   }
 }
 

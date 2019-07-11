@@ -10,6 +10,7 @@
 
 using namespace std;
 
+extern double D2NRates();
 extern double A1NRates();
 extern double GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, double pDetectorMomentum, string pDetectorName, int pElasOnly=0);
 
@@ -25,7 +26,7 @@ int getrate1_main(int argc, char** argv)
       <<"        ElasOnly=0:  inelastic + elastic for full acceptance.\n"
       <<"        ElasOnly=1:  pure elastic for full acceptance.\n"
       <<"        ElasOnly=2:  inelastic + elastic for full acceptance, with cut of 1.10<W<1.35.\n"
-      <<"        ElasOnly=4:  inelastic + elastic for full acceptance. with cut of 2.00<W<100.0\n"
+      <<"        ElasOnly=4:  inelastic + elastic for full acceptance. with cut of 2.00<W<100.0.\n"
       <<"        ElasOnly=-30: pure inelastic for 2-SC-Bar acceptance.\n"
       <<"        ElasOnly=30: inelastic + elastic for 2-SC-Bar acceptance.\n"
       <<"        ElasOnly=31: pure elastic for 2-SC-Bar acceptance.\n"
@@ -54,8 +55,28 @@ int getrate1_main(int argc, char** argv)
 int main(int argc, char** argv)
 {
   if(argc<2) {
+    cout<<"\n Calcualte rates for A1N or D2N. There are 2 modes to run this program:\n\n";
+    cout<<" Usage 1: "<<argv[0]<<" <task=-1|-2> \n"
+        <<"          This will calculate rates for all kinematic points for A1N(task=-1) or d2n(task=-2)\n\n";
+    cout<<" Usage 2: "<<argv[0]<<" <BeamCurrent_uA> <Beam_GeV> <DetectorAngle_deg> <DetectorMomentum_GeV> <DetectorName=HMS|SHMS> [ElasOnly=0]\n"
+        <<"        All energies are in GeV unit. All angles are in degree unit.\n"
+        <<"        ElasOnly=-1: pure inelastic for full acceptance.\n"
+        <<"        ElasOnly=0:  inelastic + elastic for full acceptance.\n"
+        <<"        ElasOnly=1:  pure elastic for full acceptance.\n"
+        <<"        ElasOnly=2:  inelastic + elastic for full acceptance, with cut of 1.10<W<1.35.\n"
+        <<"        ElasOnly=4:  inelastic + elastic for full acceptance. with cut of 2.00<W<100.0.\n"
+        <<"        ElasOnly=-30: pure inelastic for 2-SC-Bar acceptance.\n"
+        <<"        ElasOnly=30: inelastic + elastic for 2-SC-Bar acceptance.\n"
+        <<"        ElasOnly=31: pure elastic for 2-SC-Bar acceptance.\n"
+        <<endl;
+    return -1;
+  }
+  else if(argc==2) {
     //do calculation for all points
-    A1NRates();
+    int task = atol(argv[1]);
+    if(task==-1) A1NRates();
+    else if(task==-2) D2NRates();
+    else cout<<" Error: this task is not supported yet ...\n";
   } else {
     // do calculation for only one point
     getrate1_main(argc,argv);
