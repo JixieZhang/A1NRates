@@ -843,7 +843,8 @@ void GetBeamPara(double pBeamI_uA, double pRate_Hz, double fixedBeamI_uA,
   double tmpRate = SuggestedBeamI/theBeamI * theRate;
 
   //get the prescale factor, if it is not exceed N.15, still round it to N
-  SuggestedPS = int(ceil(tmpRate/kDAQLimit-0.15)); 
+  SuggestedPS = int(ceil(tmpRate/kDAQLimit-0.15));
+  if(SuggestedPS==0) SuggestedPS=1;
   
   //apply the prescale factor to the rate
   SuggestedRate = tmpRate/SuggestedPS;
