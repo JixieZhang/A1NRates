@@ -247,7 +247,7 @@ int BinarySearch(const int sortedArray[], int first, int last, int key)
 
   void ReadAcc(const char *filename, double**** AccArray)
   {
-    std::cout<<" Loading acceptance file '"<<filename<<"' ... "<<std::endl;
+    //std::cout<<" Loading acceptance file '"<<filename<<"' ... "<<std::endl;
     
     TFile *file = new TFile(filename);
     TTree *tree = (TTree*)gDirectory->Get("acc");
@@ -287,7 +287,7 @@ int BinarySearch(const int sortedArray[], int first, int last, int key)
     }
     file->Close();
     file->Delete();
-    std::cout<<" Acceptance file '"<<filename<<"' loaded, "<<nentries<<" records stored"<<std::endl;
+    //std::cout<<" Acceptance file '"<<filename<<"' loaded, "<<nentries<<" records stored"<<std::endl;
   }
 
 }; //end of namespace ACCEPTANCE
