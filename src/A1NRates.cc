@@ -188,12 +188,12 @@ void GetA1NTaTb(double Z, double N, double VZ, double Theta, double& Tb, double&
   double CosTh = cos(Theta);
   double SinTh = sin(Theta);
   //rad. corr., gas contribution is negligible, therefore I use 12 AMG of 3He for 3He at 10 ATM  
-  const double kX0_GE180 = 7.033; //cm
-  const double kX0_3He = 44947.0; //cm, @ 10 ATM
-  const double kX0_H2 = 75047.6;  //cm, @ 10 ATM
-  const double kX0_N2 = 3260.94;  //cm, @ 10 ATM
-  const double kX0_12C = 18.8;    //cm
-  const double kCellRadiusIn = 0.87*2.54;    //0.87 inch
+  const double kX0_GE180 = 7.040; //cm
+  const double kX0_3He = 41959.174; //cm, 3He at 12 amg, @ 10 ATM
+  const double kX0_H2 = 75510.241;  //cm, @ 10 ATM
+  const double kX0_N2 = 3274.254;  //cm, @ 10 ATM
+  const double kX0_12C = 18.834;    //cm
+  const double kCellRadiusIn = 0.87*2.54/2.0;    //0.87 inch outer diameter
   const double kCellWallThick = 0.10;        //1 mm
 
   //get the theta limit that a particle can hit the wall
@@ -205,41 +205,56 @@ void GetA1NTaTb(double Z, double N, double VZ, double Theta, double& Tb, double&
   double PathLength_end = 0.014/CosTh / kX0_GE180;  // in rad.len. unit
   double Pathlength_out = (Theta>Theta_W) ? PathLength_wall : PathLength_end;
 
-  //add the thickness that outside the cell (he4 bag and entrance|exit window of the spectrometer)
-  double Pathlength_extra = 0.01;
+  //add the thickness that outside the cell 
+  double Pathlength_exbefore=0.0004;// (he4 bag and exit window of beam pipe)
+  double Pathlength_extra = 0.01;//(he4 bag and entrance|exit window of the spectrometer)
   Pathlength_out += Pathlength_extra;
-
   
+  double kWindow_thick=0.014;//GE180 window thickness
+  double kTarget_length=40.0;//3He target cell length
   if(Z<0.0) {
     //GE180
     if(VZ<-15.0) {
       //upstream window: //0.007cm GE180
-      Tb = 0.007/kX0_GE180;
-      Ta = 0.007/CosTh/kX0_GE180 + Pathlength_out;
+      Tb = 0.5*kWindow_thick/kX0_GE180+Pathlength_exbefore;
+      if (Theta>Theta_W){
+      Ta = 0.5*kWindow_thick/CosTh/kX0_GE180 +kCellRadiusIn/SinTh/kX0_3He+ Pathlength_out;}
+      else {
+      Ta = 0.5*kWindow_thick/CosTh/kX0_GE180+(kTarget_length)/CosTh/kX0_3He + Pathlength_out;}
+		  
     }
     if(VZ>15.0) {
       //downstream window: //0.014cm GE180 + 40cm 3He + 0.007cm GE180
-      Tb = 0.021/kX0_GE180 + 40/kX0_3He;
-      Ta = 0.007/CosTh/kX0_GE180 + Pathlength_extra;
+      Tb = 1.5*kWindow_thick/kX0_GE180 + kTarget_length/kX0_3He+Pathlength_exbefore;
+      Ta = 1.5*kWindow_thick/CosTh/kX0_GE180 + Pathlength_extra;
     }
   } else if(fabs(Z-1)<0.1 && fabs(N-0)<0.1) {
     //H2:   //0.014cm GE180 + (20+Z)cm H2 
-    Tb = 0.014/kX0_GE180 + (20+VZ)/kX0_H2;
-    Ta = (20-VZ)/CosTh/kX0_H2 + Pathlength_out;
+    Tb = 1.0*kWindow_thick/kX0_GE180 + (0.5*kTarget_length+VZ)/kX0_H2+Pathlength_exbefore;
+    if (Theta>Theta_W){
+    Ta = kCellRadiusIn/SinTh/kX0_H2 + Pathlength_out;}
+    else{
+	Ta = (0.5*kTarget_length-VZ)/CosTh/kX0_H2 + Pathlength_out;}
   } else if(fabs(Z-2)<0.1 && fabs(N-1)<0.1) {
     //He3:   //0.014cm GE180 + (20+Z)cm 3He 
-    Tb = 0.014/kX0_GE180 + (20+VZ)/kX0_3He;
-    Ta = (20-VZ)/CosTh/kX0_3He + Pathlength_out;
+    Tb =  1.0*kWindow_thick/kX0_GE180 + (0.5*kTarget_length+VZ)/kX0_3He+Pathlength_exbefore;
+    if (Theta>Theta_W){
+    Ta = kCellRadiusIn/SinTh/kX0_3He + Pathlength_out;}
+    else{
+    Ta = (0.5*kTarget_length-VZ)/CosTh/kX0_3He + Pathlength_out;}	
   } else if(fabs(Z-7)<0.1 && fabs(N-7)<0.1) {
     //N2:   //0.014cm GE180 + (20+Z)cm N2 
-    Tb = 0.014/kX0_GE180 + (20+VZ)/kX0_N2;
-    Ta = (20-VZ)/CosTh/kX0_N2 + Pathlength_out;  
+    Tb = 1.0*kWindow_thick/kX0_GE180 + (0.5*kTarget_length+VZ)/kX0_N2+Pathlength_exbefore;
+    if (Theta>Theta_W){
+    Ta = kCellRadiusIn/SinTh/kX0_N2 + Pathlength_out;}
+    else{
+	Ta = (0.5*kTarget_length-VZ)/CosTh/kX0_N2 + Pathlength_out;}  
   } else if(fabs(Z-6)<0.1 && fabs(N-6)<0.1) {
     //C12:   //50 mil 12C
-    Tb = 0.127/kX0_GE180;
-    Ta = 0.127/CosTh/kX0_GE180;  
+    Tb = 0.127/kX0_12C+Pathlength_exbefore;
+    Ta = 0.127/CosTh/kX0_12C+Pathlength_extra;  
   } else {
-    Tb = 0.0;
+    Tb = 0.0; 
     Ta = 0.0;
   }
 
@@ -618,6 +633,7 @@ double* GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, doubl
   if(pElasOnly==1)   cout<<"\n===================Full acceptance:  Pure elastic =========================\n";
   if(pElasOnly==2)   cout<<"\n===================Full acceptance:  With Delta (1.1<W<1.35) Cut ==========\n";
   if(pElasOnly==4)   cout<<"\n===================Full acceptance:  With DIS (2.0<W<100.0) Cut ===========\n";
+  if(pElasOnly==5)   cout<<"\n===================Full acceptance:  With Resonance (0.0<W<2.0) Cut =======\n";
   if(pElasOnly==-30) cout<<"\n===================Only 2 SC bars:  Pure Inelastic ========================\n";
   if(pElasOnly==30)  cout<<"\n===================Only 2 SC bars:  Inelastic + Elastic ===================\n";
   if(pElasOnly==31)  cout<<"\n===================Only 2 SC bars:  Pure elastic ==========================\n";
@@ -699,8 +715,8 @@ double* GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, doubl
     
     pInteXs = 0.0;
     
-    //do C12 or pressure curve only for 1-pass elastic kinematic points
-    if((i==0 || i>=4)  && !(fabs(pBeamE-2.1)<0.1 && pDetectorMomentum>2.0)) continue;
+    //do C12 or pressure curve only for 1-pass elastic kinematic points, Perform DIS runs for reference cell 3He, N2, Hz at 10 atm. 
+    if((i==0)  && !(fabs(pBeamE-2.1)<0.1 && pDetectorMomentum>2.0)) continue;
     
     //I will also do x binning for He3 DIS run
     if(i==1 && pBeamE>8.0) {
@@ -716,6 +732,8 @@ double* GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, doubl
             pXS_he3=GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], pVZ, pDetectorName, pElasOnly,L1Xbj[ix],L1Xbj[ix+1],-1.,-1.,1.10,1.35);
           else if(pElasOnly==4)
             pXS_he3=GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], pVZ, pDetectorName, pElasOnly,L1Xbj[ix],L1Xbj[ix+1],-1.,-1.,2.00,100.0);
+          else if(pElasOnly==5)
+            pXS_he3=GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], pVZ, pDetectorName, pElasOnly,L1Xbj[ix],L1Xbj[ix+1],-1.,-1.,0.00,2.0);          
           else
             pXS_he3=GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], pVZ, pDetectorName, pElasOnly, L1Xbj[ix],L1Xbj[ix+1]);
 
@@ -745,6 +763,8 @@ double* GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, doubl
           pXS_long=GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], pVZ, pDetectorName, pElasOnly,-1.,-1.,-1.,-1.,1.10,1.35);
         else if(pElasOnly==4)
           pXS_long=GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], pVZ, pDetectorName, pElasOnly,-1.,-1.,-1.,-1.,2.00,100.0);
+        else if(pElasOnly==5)
+          pXS_long=GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], pVZ, pDetectorName, pElasOnly,-1.,-1.,-1.,-1.,0.00,2.0);
         else
           pXS_long=GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], pVZ, pDetectorName, pElasOnly);
         if(DEBUG>=3) cout<<"  VZ = "<<setw(6)<<pVZ<<"  InteXS_"<<L1Name[i]<<" = "<<setw(8)<<pXS_long*1.0E6<<" (pb)"<<endl;
@@ -757,6 +777,8 @@ double* GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, doubl
             pXS_long_old=GetInteXS_old(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], pVZ, pDetectorName, pElasOnly,-1.,-1.,-1.,-1.,1.10,1.35);
           else if(pElasOnly==4)
             pXS_long_old=GetInteXS_old(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], pVZ, pDetectorName, pElasOnly,-1.,-1.,-1.,-1.,2.00,100.0);
+          else if(pElasOnly==5)
+            pXS_long_old=GetInteXS_old(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], pVZ, pDetectorName, pElasOnly,-1.,-1.,-1.,-1.,0.00,2.0);
           else
             pXS_long_old=GetInteXS_old(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], pVZ, pDetectorName, pElasOnly);
           pXS_tot_long_old += pXS_long_old;
@@ -781,6 +803,8 @@ double* GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, doubl
         pInteXs=GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], L1VZ[i], pDetectorName, pElasOnly,-1.,-1.,-1.,-1.,1.10,1.35);
       else if(pElasOnly==4)
         pInteXs=GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], L1VZ[i], pDetectorName, pElasOnly,-1.,-1.,-1.,-1.,2.00,100.0);
+      else if(pElasOnly==5)
+        pInteXs=GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], L1VZ[i], pDetectorName, pElasOnly,-1.,-1.,-1.,-1.,0.00,2.0);
       else
         pInteXs=GetInteXS(pBeamE, pDetectorAngle, pDetectorMomentum, L1Z[i], L1N[i], L1VZ[i], pDetectorName, pElasOnly);
     }
@@ -1010,6 +1034,22 @@ void A1NRates()
       pRate = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",2);
       for(int i=0;i<7;i++) pRate_SHMS[i] = pRate[i]; 
     }
+    else if (j=3) {
+      //DIS
+      for(int i=0;i<7;i++) pRate_HMS[i] = pRate_SHMS[i] = 0.0;  //reset
+      pRate = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",0);
+      for(int i=0;i<7;i++) pRate_HMS[i] = pRate[i];    
+      pRate = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",0);
+      for(int i=0;i<7;i++) pRate_SHMS[i] = pRate[i];
+      GetBeamPara(kBeamI[j],pRate_HMS,pRate_SHMS);
+      
+      //apply W cuts for DIS and Resonance for SHMS kine D
+      for(int i=0;i<7;i++) pRate_HMS[i] = pRate_SHMS[i] = 0.0;  //reset
+      pRate = GetRate(kBeamI[j],kBeamE[j],kHMSAngle[j]*deg,kHMSP0[j],"HMS",4);
+      for(int i=0;i<7;i++) pRate_HMS[i] = pRate[i]; 
+      pRate = GetRate(kBeamI[j],kBeamE[j],kSHMSAngle[j]*deg,kSHMSP0[j],"SHMS",5);
+      for(int i=0;i<7;i++) pRate_SHMS[i] = pRate[i];
+   }     
     else {
       //DIS
       for(int i=0;i<7;i++) pRate_HMS[i] = pRate_SHMS[i] = 0.0;  //reset
