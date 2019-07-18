@@ -33,6 +33,8 @@ using namespace std;
 // >=6: print even more debug information in GetInteXS() and GetXS()     
 #define DEBUG 2
 
+static const double kC12FoilThick = 0.010*2.54;    //10 mil C12 foil thickness
+
 static const double deg = acos(0.0)/90.0;
 double GetXS(float Ei, float Ef, float Theta, float Tb, float Ta, int ElasOnly=0);
 double GetXS_GE180(float Ei, float Ef, float Theta, float Tb, float Ta, int ElasOnly=0);
@@ -87,6 +89,10 @@ double GetElasEprime(double beam_gev, double theta_e_rad, double M_gev)
 //xs wrapper
 double GetXS(int Z, int N, float Ei, float Ef, float Theta, float Tb, float Ta, int ElasOnly)
 {
+#ifdef DEBUG 
+  if(DEBUG>=6) cout<<" Executing GetXS(Z="<<Z<<", N="<<N<<", Ei="<<Ei<<", Ef="<<Ef<<", Theta="<<Theta<<", Tb="<<Tb<<", Ta="<<Ta<<")\n";
+#endif
+
   if(Z<0) return GetXS_GE180(Ei,Ef,Theta,Tb,Ta,ElasOnly);
   
   double pXs=0.0;
@@ -148,11 +154,6 @@ double GetXS_GE180(float Ei, float Ef, float Theta, float Tb, float Ta, int Elas
   int pZ_aver_ge180 = lround(pMolMass_aver_ge180 * 0.4829);
   int pN_aver_ge180 = lround(pMolMass_aver_ge180-pZ_aver_ge180);  //round up to nearest int
     
-
-  //comput xs using average Z and N
-  double pXs=0.0;
-  pXs = GetXS(pZ_aver_ge180, pN_aver_ge180, Ei, Ef, Theta, Tb, Ta, ElasOnly);
-    
   //comput xs for each element
   double pXs_O  = GetXS( 8,  8, Ei, Ef, Theta, Tb, Ta, ElasOnly);
   double pXs_Si = GetXS(14, 14, Ei, Ef, Theta, Tb, Ta, ElasOnly);
@@ -171,10 +172,15 @@ double GetXS_GE180(float Ei, float Ef, float Theta, float Tb, float Ta, int Elas
 
 #ifdef DEBUG 
   if(DEBUG>=5) {
+    //comput xs using average Z and N
+    double pXs=0.0;
+    pXs = GetXS(pZ_aver_ge180, pN_aver_ge180, Ei, Ef, Theta, Tb, Ta, ElasOnly);
+    
     cout<<" using average Z and N, XS_GE180 = "<<pXs
         <<"  sum up all elements, XS_GE180 = "<<pXs_ge180<<endl;
   }
 #endif
+
   return pXs_ge180;
 }
 
@@ -183,21 +189,22 @@ void GetA1NTaTb(double Z, double N, double VZ, double Theta, double& Tb, double&
 {
   Ta=Tb=0.0;
   //uncomment the next line if you want to turn on rad. corr.
-  //return;
+  //By Jixie: the xs model has bug in doing R.C., do not use this feature until this bug is fixed 
+  return;
   
   double CosTh = cos(Theta);
   double SinTh = sin(Theta);
   //rad. corr., gas contribution is negligible, therefore I use 12 AMG of 3He for 3He at 10 ATM  
-  const double kX0_GE180 = 7.040; //cm
+  const double kX0_GE180 = 7.040;   //cm
   const double kX0_3He = 41959.174; //cm, 3He at 12 amg, @ 10 ATM
   const double kX0_H2 = 75510.241;  //cm, @ 10 ATM
-  const double kX0_N2 = 3274.254;  //cm, @ 10 ATM
+  const double kX0_N2 = 3274.254;   //cm, @ 10 ATM
   const double kX0_12C = 18.834;    //cm
-  const double kCellRadiusIn = 0.87*2.54/2.0;    //0.87 inch outer diameter
-  const double kCellWallThick = 0.10;        //1 mm
+  const double kCellWallThick = 0.10;    //1 mm
+  const double kCellRadiusIn = 0.87*2.54/2.0-kCellWallThick;    //0.87 inch outer diameter
 
-  //get the theta limit that a particle can hit the wall
-  double Theta_W = atan2(kCellRadiusIn,20.0-kCellRadiusIn-VZ);
+  //get the theta limit that a particle can hit the wall, assuming the cell is a perfect cylinder with 2 end-plate, not sphere shape end
+  double Theta_W = atan2(kCellRadiusIn,20.0-VZ);
   if(Theta_W<0.0) Theta_W += 3.1415926535;
   
   //get the path length thrught which a paritle going out will go
@@ -217,42 +224,45 @@ void GetA1NTaTb(double Z, double N, double VZ, double Theta, double& Tb, double&
     if(VZ<-15.0) {
       //upstream window: //0.007cm GE180
       Tb = 0.5*kWindow_thick/kX0_GE180+Pathlength_exbefore;
-      if (Theta>Theta_W){
-      Ta = 0.5*kWindow_thick/CosTh/kX0_GE180 +kCellRadiusIn/SinTh/kX0_3He+ Pathlength_out;}
-      else {
-      Ta = 0.5*kWindow_thick/CosTh/kX0_GE180+(kTarget_length)/CosTh/kX0_3He + Pathlength_out;}
-		  
+      if (Theta>Theta_W) {
+        Ta = 0.5*kWindow_thick/CosTh/kX0_GE180 +kCellRadiusIn/SinTh/kX0_3He+ Pathlength_out;
+      } else {
+        Ta = 0.5*kWindow_thick/CosTh/kX0_GE180+(kTarget_length)/CosTh/kX0_3He + Pathlength_out;
+      } 
     }
     if(VZ>15.0) {
       //downstream window: //0.014cm GE180 + 40cm 3He + 0.007cm GE180
       Tb = 1.5*kWindow_thick/kX0_GE180 + kTarget_length/kX0_3He+Pathlength_exbefore;
-      Ta = 1.5*kWindow_thick/CosTh/kX0_GE180 + Pathlength_extra;
+      Ta = 0.5*kWindow_thick/CosTh/kX0_GE180 + Pathlength_extra;
     }
   } else if(fabs(Z-1)<0.1 && fabs(N-0)<0.1) {
     //H2:   //0.014cm GE180 + (20+Z)cm H2 
     Tb = 1.0*kWindow_thick/kX0_GE180 + (0.5*kTarget_length+VZ)/kX0_H2+Pathlength_exbefore;
-    if (Theta>Theta_W){
-    Ta = kCellRadiusIn/SinTh/kX0_H2 + Pathlength_out;}
-    else{
-	Ta = (0.5*kTarget_length-VZ)/CosTh/kX0_H2 + Pathlength_out;}
+    if (Theta>Theta_W) {
+      Ta = kCellRadiusIn/SinTh/kX0_H2 + Pathlength_out;
+    } else {
+      Ta = (0.5*kTarget_length-VZ)/CosTh/kX0_H2 + Pathlength_out;
+    }
   } else if(fabs(Z-2)<0.1 && fabs(N-1)<0.1) {
     //He3:   //0.014cm GE180 + (20+Z)cm 3He 
     Tb =  1.0*kWindow_thick/kX0_GE180 + (0.5*kTarget_length+VZ)/kX0_3He+Pathlength_exbefore;
-    if (Theta>Theta_W){
-    Ta = kCellRadiusIn/SinTh/kX0_3He + Pathlength_out;}
-    else{
-    Ta = (0.5*kTarget_length-VZ)/CosTh/kX0_3He + Pathlength_out;}	
+    if (Theta>Theta_W) {
+      Ta = kCellRadiusIn/SinTh/kX0_3He + Pathlength_out;
+    } else {
+      Ta = (0.5*kTarget_length-VZ)/CosTh/kX0_3He + Pathlength_out;
+    }
   } else if(fabs(Z-7)<0.1 && fabs(N-7)<0.1) {
     //N2:   //0.014cm GE180 + (20+Z)cm N2 
     Tb = 1.0*kWindow_thick/kX0_GE180 + (0.5*kTarget_length+VZ)/kX0_N2+Pathlength_exbefore;
-    if (Theta>Theta_W){
-    Ta = kCellRadiusIn/SinTh/kX0_N2 + Pathlength_out;}
-    else{
-	Ta = (0.5*kTarget_length-VZ)/CosTh/kX0_N2 + Pathlength_out;}  
+    if (Theta>Theta_W) {
+      Ta = kCellRadiusIn/SinTh/kX0_N2 + Pathlength_out;
+    } else {
+      Ta = (0.5*kTarget_length-VZ)/CosTh/kX0_N2 + Pathlength_out;
+    }  
   } else if(fabs(Z-6)<0.1 && fabs(N-6)<0.1) {
-    //C12:   //50 mil 12C
-    Tb = 0.127/kX0_12C+Pathlength_exbefore;
-    Ta = 0.127/CosTh/kX0_12C+Pathlength_extra;  
+    //C12:   //5 mil 12C
+    Tb = 0.5*kC12FoilThick/kX0_12C+Pathlength_exbefore;
+    Ta = 0.5*kC12FoilThick/CosTh/kX0_12C+Pathlength_extra;  
   } else {
     Tb = 0.0; 
     Ta = 0.0;
@@ -689,7 +699,7 @@ double* GetRate(double pBeamCurrent, double pBeamE, double pDetectorAngle, doubl
   int L1Nuclei_per_molecule[]={1, 1, 1, 1, 2, 2, 1};  //number of atoms per molecule, use 1 for all compounds, n for Hn, Dn
   double L1Dens[]={Dc12, Dhe3, Dge180, Dge180, DH2, DN2, D3He};  //g/cm3
   double L1MolMass[]={MolMass_c12, MolMass_he3, MolMass_ge180, MolMass_ge180, MolMass_pr*2, MolMass_n14*2, MolMass_he3};  //g
-  double L1Thick[]={0.254, 40.0, 0.014, 0.014, 40.0, 40.0, 40.0}; //cm
+  double L1Thick[]={kC12FoilThick, 40.0, 0.014, 0.014, 40.0, 40.0, 40.0}; //cm
   double L1VZ[]={0.0, 0.0, -20.0, 20.0, 0.0, 0.0, 0.0};  // vertex location in cm
   
   //x an Q2 binning
