@@ -85,5 +85,17 @@ First release version v1.0.0.
 
 8.  Added GetA1NTaTb() to calculate Ta and Tb for radiation correction.
 
-9.  Fixed bug in GetA1NTaTb(). Changed C12 foil target thickness from 100 mil to 10 mil.  
+9.  Fixed bug in GetA1NTaTb(). Changed C12 foil target thickness from 100 mil to 10 mil.
+
+10. Added A1NOptics(), GetOpticsRate() and GetOpticsBeamPara() only for optics.
+
+11. Added He3FormFactorRates() to calculate rates for He3 form factor experiment.
+
+12. Updated GetOpticsBeamPara() and GetBeamPara() so it will provide 2-arm run plan assuming HMS get priority.
+
+13. Added global variables to control if or not to calculate C12 rates or Pressure curve. 
+* static bool  gSkipC12 = false;
+* static bool  gSkipPresureCurve = false;
+
+14. For 12AMG helium3 target, use very fine bin to integrated over Xbj bin so we can have reliable rate in Xbj bins.
 
